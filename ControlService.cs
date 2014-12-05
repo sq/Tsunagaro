@@ -25,7 +25,7 @@ namespace Tsunagaro {
         public int Port { get; private set; }
         public string URL { get; private set; }
 
-        private readonly Dictionary<string, Func<HttpServer.Request, IEnumerator<object>>> Handlers;
+        public readonly Dictionary<string, Func<HttpServer.Request, IEnumerator<object>>> Handlers;
         private readonly TaskScheduler Scheduler;
         private readonly HttpServer HttpServer;
 
@@ -385,7 +385,7 @@ namespace Tsunagaro {
     <head>
         <title>Status</title>
         <meta charset=""UTF-8"">
-        <meta http-equiv=""refresh"" content=""5"">
+        <meta http-equiv=""refresh"" content=""10"">
     </head>
     <body>
         <h2>Log</h2>

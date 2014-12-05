@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using System.Linq;
 using Squared.Task;
 
 namespace Tsunagaro {
@@ -13,6 +14,7 @@ namespace Tsunagaro {
         public static readonly TaskScheduler Scheduler = new TaskScheduler(() => JobQueue);
         public static readonly ControlService Control = new ControlService(Scheduler);
         public static readonly DiscoveryService Discovery = new DiscoveryService(Scheduler);
+        public static readonly ClipboardService Clipboard = new ClipboardService(Scheduler);
 
         public static readonly MemoryStream StdOut = new MemoryStream();
 
@@ -57,11 +59,15 @@ namespace Tsunagaro {
         }
 
         public static IEnumerator<object> StartupTask (Action ready) {
-            var controlStartup = Scheduler.Start(Control.Initialize());
-            var discoveryStartup = Scheduler.Start(Discovery.Initialize());
+            var tasks = new[] {
+                Control.Initialize(),
+                Discovery.Initialize(),
+                Clipboard.Initialize(),
+            };
 
-            yield return controlStartup;
-            yield return discoveryStartup;
+            yield return Future.WaitForAll(
+                from t in tasks select Scheduler.Start(t)
+            );
 
             ready();
         }
