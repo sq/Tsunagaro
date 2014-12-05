@@ -72,7 +72,7 @@ namespace Tsunagaro {
             foreach (var lba in LoopbackAddresses)
                 HttpServer.EndPoints.Add(new IPEndPoint(lba, Port));
 
-            Scheduler.Start(HttpTask());
+            Scheduler.Start(HttpTask(), TaskExecutionPolicy.RunAsBackgroundTask);
         }
 
         private static bool IsEndPointBound (EndPoint endPoint) {
