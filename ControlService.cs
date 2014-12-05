@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 using Newtonsoft.Json;
 using Squared.Task;
 using Squared.Task.Http;
@@ -73,6 +74,8 @@ namespace Tsunagaro {
                 HttpServer.EndPoints.Add(new IPEndPoint(lba, Port));
 
             Scheduler.Start(HttpTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            Console.WriteLine("Control service active at {0}", URL);
         }
 
         private static bool IsEndPointBound (EndPoint endPoint) {
@@ -371,7 +374,30 @@ namespace Tsunagaro {
         }
 
         IEnumerator<object> ServeIndex (HttpServer.Request request) {
-            yield return WriteResponseBody(request, "Hello.");
+            request.Response.ContentType = "text/html";
+
+            var l = Program.StdOut.Length;
+            var b = Program.StdOut.GetBuffer();
+            var logText = Encoding.UTF8.GetString(b, 0, (int)l);
+
+            var html = String.Format(
+                @"<html>
+    <head>
+        <title>Status</title>
+        <meta charset=""UTF-8"">
+        <meta http-equiv=""refresh"" content=""5"">
+    </head>
+    <body>
+        <h2>Log</h2>
+        <pre>
+{0}
+        </pre>
+    </body>
+</html>",
+                HttpUtility.HtmlEncode(logText)
+            );
+
+            yield return WriteResponseBody(request, html);
         }
     }
 }

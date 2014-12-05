@@ -1,18 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using Squared.Task;
 
 namespace Tsunagaro {
     static class Program {
-        public static readonly TaskScheduler Scheduler = new TaskScheduler(JobQueue.WindowsMessageBased);
+        public static readonly ClipboardMonitorJobQueue JobQueue = new ClipboardMonitorJobQueue();
+        public static readonly TaskScheduler Scheduler = new TaskScheduler(() => JobQueue);
         public static readonly ControlService Control = new ControlService(Scheduler);
         public static readonly DiscoveryService Discovery = new DiscoveryService(Scheduler);
 
-        [MTAThread]
+        public static readonly MemoryStream StdOut = new MemoryStream();
+
+        [STAThread]
         static void Main () {
+            var enc = new UTF8Encoding(false);
+            var tw = new StreamWriter(StdOut, enc);
+            tw.AutoFlush = true;
+
+            Console.SetOut(tw);
+            Console.SetError(tw);
+
             UIMain();
         }
 
