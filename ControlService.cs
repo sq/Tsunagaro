@@ -77,8 +77,9 @@ namespace Tsunagaro {
 
         private static bool IsEndPointBound (EndPoint endPoint) {
             try {
-                using (var socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.IP))
+                using (var socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.IP)) {
                     socket.Bind(endPoint);
+                }
 
                 return false;
             } catch (SocketException se) {

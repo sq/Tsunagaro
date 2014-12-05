@@ -6,12 +6,20 @@ using System.Text;
 using System.Linq;
 using Squared.Task;
 using Squared.Task.IO;
+using System.Diagnostics;
 
 namespace Tsunagaro {
     public class DiscoveryService {
+        public struct Host {
+            public IPEndPoint EndPoint;
+            public int Pid;
+        }
+
         public const int DiscoveryPort = 9887;
 
         public readonly TaskScheduler Scheduler;
+        public readonly HashSet<Host> KnownHosts = new HashSet<Host>();
+        private readonly Signal EarlyAnnounceSignal = new Signal();
 
         public UdpClient Listener;
 
@@ -20,13 +28,34 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> Initialize () {
-            yield return Future.RunInThread(() =>
-                Listener = new UdpClient(DiscoveryPort, AddressFamily.InterNetwork)
-            );
+            yield return Future.RunInThread(() => {
+                Listener = new UdpClient() {
+                    ExclusiveAddressUse = false,
+                    EnableBroadcast = true,
+                    MulticastLoopback = true,
+                    DontFragment = true
+                };
+
+                Listener.Client.ExclusiveAddressUse = false;
+                Listener.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true); 
+
+                Listener.Client.Bind(new IPEndPoint(IPAddress.Any, DiscoveryPort));
+            });
 
             Scheduler.Start(ListenTask(), TaskExecutionPolicy.RunAsBackgroundTask);
 
-            Scheduler.Start(Announce(), TaskExecutionPolicy.RunAsBackgroundTask);
+            Scheduler.Start(HeartbeatTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+        }
+
+        public IEnumerator<object> HeartbeatTask () {
+            while (true) {
+                yield return Announce();
+
+                yield return Future.WaitForFirst(
+                    EarlyAnnounceSignal.Wait(),
+                    Scheduler.Start(new Sleep(60))
+                );
+            }
         }
 
         public IEnumerator<object> ListenTask () {
@@ -39,7 +68,8 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> Announce () {
-            yield return Listener.AsyncSend(new byte[1], 1, new IPEndPoint(IPAddress.Broadcast, DiscoveryPort));
+            var payload = BitConverter.GetBytes(Process.GetCurrentProcess().Id);
+            yield return Listener.AsyncSend(payload, payload.Length, new IPEndPoint(IPAddress.Broadcast, DiscoveryPort));
         }
 
         private IEnumerator<object> ProcessAnnouncement (Network.UdpPacket packet) {
@@ -58,10 +88,27 @@ namespace Tsunagaro {
 
             yield return fAddresses;
 
-            if (fAddresses.Result.Contains(packet.EndPoint.Address)) {
-                Console.WriteLine("Got announcement from myself", packet.EndPoint);
+            int pid = BitConverter.ToInt32(packet.Bytes, 0);
+            var host = new Host {
+                EndPoint = packet.EndPoint,
+                Pid = pid
+            };
+
+            if (
+                fAddresses.Result.Contains(packet.EndPoint.Address) &&
+                (pid == Process.GetCurrentProcess().Id)
+            ) {
             } else {
-                Console.WriteLine("Got announcement from {0}", packet.EndPoint);
+                bool isNew = !KnownHosts.Contains(host);
+                KnownHosts.Add(host);
+
+                if (isNew) {
+                    Console.WriteLine("Discovered host {0} pid {1}", packet.EndPoint, pid);
+
+                    EarlyAnnounceSignal.Set();
+                } else {
+                    Console.WriteLine("Got heartbeat from host {0} pid {1}", packet.EndPoint, pid);
+                }
             }
         }
     }
