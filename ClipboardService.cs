@@ -43,6 +43,9 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> ListenTask () {
+            yield return new Sleep(1);
+            Clipboard.SetDataObject(new ClipboardDataProxy());
+
             while (true) {
                 yield return ClipboardChangedSignal.Wait();
 

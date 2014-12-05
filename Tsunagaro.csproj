@@ -44,6 +44,7 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClipboardDataProxy.cs" />
     <Compile Include="ClipboardMonitorJobQueue.cs" />
     <Compile Include="ControlService.cs" />
     <Compile Include="ClipboardService.cs" />
