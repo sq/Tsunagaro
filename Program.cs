@@ -27,7 +27,16 @@ namespace Tsunagaro {
             Console.SetOut(tw);
             Console.SetError(tw);
 
+            Scheduler.ErrorHandler = OnTaskError;
+
             UIMain();
+        }
+
+        private static bool OnTaskError (Exception exc) {
+            Console.WriteLine("Unhandled error in background task: {0}", exc);
+
+            // FIXME: More serious handling? We want to be resilient so that we don't crash constantly
+            return true;
         }
 
         private static void UIMain () {

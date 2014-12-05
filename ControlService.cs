@@ -229,11 +229,11 @@ namespace Tsunagaro {
 
             string localPath;
 
-            if (Debugger.IsAttached && Directory.Exists(Path.Combine("..", "..", "..", "LevelSharing"))) {
+            if (Debugger.IsAttached && Directory.Exists(Path.Combine("..", "..", "web_assets"))) {
                 // Pull from project folder instead of build
-                localPath = Path.Combine("..", "..", "..", "LevelSharing", "web_assets", path);
+                localPath = Path.Combine("..", "..", "web_assets", path);
             } else {
-                localPath = Path.Combine(".", "LevelSharing", "web_assets", path);
+                localPath = Path.Combine(".", "web_assets", path);
             }
 
             return localPath;
@@ -303,28 +303,28 @@ namespace Tsunagaro {
             return String.Format("(/* {0} */ {1})", expression, valueString);
         }
 
-        IFuture WriteResponseBody (HttpServer.Request request, byte[] body) {
+        public static IFuture WriteResponseBody (HttpServer.Request request, byte[] body) {
             if (body == null)
                 return request.Response.SendHeaders();
 
             return request.Response.SendResponse(new ArraySegment<byte>(body, 0, body.Length));
         }
 
-        IFuture WriteResponseBody (HttpServer.Request request, Stream body) {
+        public static IFuture WriteResponseBody (HttpServer.Request request, Stream body) {
             if (body == null)
                 return request.Response.SendHeaders();
 
             return request.Response.SendResponse(body);
         }
 
-        IFuture WriteResponseBody (HttpServer.Request request, string text) {
+        public static IFuture WriteResponseBody (HttpServer.Request request, string text) {
             if (text == null)
                 return request.Response.SendHeaders();
 
             return request.Response.SendResponse(text, Encoding.UTF8);
         }
 
-        IEnumerator<object> ServeExpandedText (HttpServer.Request request, Func<Stream> openSource, string contentType, Dictionary<string, object> extraParameters = null) {
+        public IEnumerator<object> ServeExpandedText (HttpServer.Request request, Func<Stream> openSource, string contentType, Dictionary<string, object> extraParameters = null) {
             request.Response.ContentType = contentType;
 
             using (var ar = new AsyncTextReader(new StreamDataAdapter(openSource(), true))) {
@@ -337,7 +337,7 @@ namespace Tsunagaro {
             }
         }
 
-        IEnumerator<object> ServeStaticFile (HttpServer.Request request, Func<Stream> openSource, string contentType) {
+        public static IEnumerator<object> ServeStaticFile (HttpServer.Request request, Func<Stream> openSource, string contentType) {
             request.Response.StatusCode = 200;
             request.Response.ContentType = contentType;
 
@@ -346,7 +346,7 @@ namespace Tsunagaro {
             }
         }
 
-        IEnumerator<object> ServeError (HttpServer.Request request, int errorCode, string errorText) {
+        public static IEnumerator<object> ServeError (HttpServer.Request request, int errorCode, string errorText) {
             request.Response.StatusCode = errorCode;
             request.Response.StatusText = errorText;
             request.Response.ContentType = "text/html";
