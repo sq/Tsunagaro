@@ -21,8 +21,6 @@ namespace Tsunagaro {
         const int PortBase = 9888;
         const int PortsToTry = 10;
 
-        public IPAddress[] LoopbackAddresses;
-
         public int Port { get; private set; }
         public string URL { get; private set; }
 
@@ -46,20 +44,15 @@ namespace Tsunagaro {
 
             IsInitialized = true;
 
-            var loopbackAddresses = new List<IPAddress>();
-            for (var i = 0; i < 16; i++)
-                loopbackAddresses.Add(new IPAddress(new byte[] { 127, 0, 0, (byte)(i + 1) }));
-
-            LoopbackAddresses = loopbackAddresses.ToArray();
-
             Port = -1;
             // Scan ports starting from our port base to find one we can use.
             for (int portToTry = PortBase; portToTry < (PortBase + PortsToTry); portToTry++) {
-                var ep = new IPEndPoint(IPAddress.Loopback, portToTry);
+                var ep = new IPEndPoint(IPAddress.Any, portToTry);
                 var f = Future.RunInThread(() => IsEndPointBound(ep));
                 yield return f;
 
                 if (!f.Result) {
+                    HttpServer.EndPoints.Add(ep);
                     Port = portToTry;
                     URL = String.Format("http://localhost:{0}/", Port);
                     break;
@@ -71,12 +64,9 @@ namespace Tsunagaro {
                 throw new Exception("Could not find a port to bind the http server to");
             }
 
-            foreach (var lba in LoopbackAddresses)
-                HttpServer.EndPoints.Add(new IPEndPoint(lba, Port));
-
             Scheduler.Start(HttpTask(), TaskExecutionPolicy.RunAsBackgroundTask);
 
-            Console.WriteLine("Control service active at {0}", URL);
+            Console.WriteLine("Control service active at http://{0}:{1}/", Dns.GetHostName(), Port);
         }
 
         private static bool IsEndPointBound (EndPoint endPoint) {
@@ -359,13 +349,6 @@ namespace Tsunagaro {
             ));
         }
 
-        byte GetLoopbackAddressByte (string filename, int index) {
-            var hash = filename.GetHashCode();
-            var modulatedHash = Math.Abs(hash) % LoopbackAddresses.Length;
-            var address = LoopbackAddresses[modulatedHash];
-            return address.GetAddressBytes()[index];
-        }
-
         static string UnescapeURL (string url) {
             // God, why did they deprecate the builtin for this without a replacement???
             return (new Uri("http://augh/" + url))
@@ -391,7 +374,7 @@ namespace Tsunagaro {
     <body>
         <h2>Peers</h2>
         <table>
-            <tr><th>Machine Name</th><th>IP</th><th>PID</th></tr>
+            <tr><th>Name</th><th>Address</th></tr>
 {1}
         </table>
         <h2>Log</h2>
@@ -403,12 +386,11 @@ namespace Tsunagaro {
                 HttpUtility.HtmlEncode(logText),
                 String.Join(
                     Environment.NewLine,
-                    from h in Program.Discovery.KnownHosts 
+                    from p in Program.Peer.Peers
                     select String.Format(
-                        "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
-                        Dns.GetHostByAddress(h.EndPoint.Address).HostName,
-                        h.EndPoint.Address,
-                        h.Pid
+                        "<tr><td>{0}</td><td>{1}</td></tr>",
+                        p.HostName,
+                        p.RemoteEndPoint
                     )
                 )
             );

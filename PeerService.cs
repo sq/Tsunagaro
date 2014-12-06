@@ -36,15 +36,18 @@ namespace Tsunagaro {
         }
 
         public class Connection : IDisposable {
+            public readonly string     HostName;
             public readonly IPEndPoint RemoteEndPoint;
             public readonly int        Port;
 
             public readonly SocketDataAdapter Channel;
             public readonly TcpClient         TcpClient;
 
-            public Connection (TcpClient tcpClient) {
+            public Connection (TcpClient tcpClient, IPEndPoint remoteEndPoint) {
                 TcpClient = tcpClient;
                 Channel = new SocketDataAdapter(tcpClient.Client, false);
+                RemoteEndPoint = remoteEndPoint;
+                HostName = Dns.GetHostByAddress(RemoteEndPoint.Address).HostName;
             }
 
             public void Dispose () {
@@ -100,7 +103,7 @@ namespace Tsunagaro {
                 else
                     Console.WriteLine("Connection established with {0}", pc.RemoteEndPoint);
 
-                var conn = new Connection(pc.Future.Result);
+                var conn = new Connection(pc.Future.Result, pc.RemoteEndPoint);
                 Scheduler.Start(HandleConnection(conn), TaskExecutionPolicy.RunAsBackgroundTask);
             } finally {
                 Pending.Remove(pc);
@@ -117,6 +120,39 @@ namespace Tsunagaro {
                 Peers.Remove(conn);
                 conn.Dispose();
             }
+        }
+
+        public IEnumerator<object> TryConnectTo (IPEndPoint endpoint) {
+            Console.WriteLine("Handshaking with {0}", endpoint);
+
+            var req = WebRequest.CreateHttp(String.Format("http://{0}/connect", endpoint));
+            var fResponse = req.IssueAsync(Scheduler);
+
+            yield return fResponse;
+
+            if (fResponse.Failed) {
+                Console.WriteLine("Connection to {0} failed: {1}", endpoint, fResponse.Error);
+                yield break;
+            }
+
+            var addressText = fResponse.Result.Body;
+            var channelHost = addressText.Substring(0, addressText.IndexOf(":"));
+            var channelPort = int.Parse(addressText.Substring(addressText.IndexOf(":") + 1));
+
+            Console.WriteLine("Connecting to {0} at {1}", endpoint, addressText);
+
+            var fClient = Network.ConnectTo(channelHost, channelPort);
+            yield return fClient;
+
+            if (fClient.Failed) {
+                Console.WriteLine("Connection to {0} failed: {1}", endpoint, fClient.Error);
+                yield break;
+            }
+
+            Console.WriteLine("Connection established with {0}", endpoint);
+
+            var conn = new Connection(fClient.Result, endpoint);
+            Scheduler.Start(HandleConnection(conn), TaskExecutionPolicy.RunAsBackgroundTask);
         }
     }
 }

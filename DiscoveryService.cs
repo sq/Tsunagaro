@@ -10,15 +10,9 @@ using System.Diagnostics;
 
 namespace Tsunagaro {
     public class DiscoveryService {
-        public struct Host {
-            public IPEndPoint EndPoint;
-            public int Pid;
-        }
-
         public const int DiscoveryPort = 9887;
 
         public readonly TaskScheduler Scheduler;
-        public readonly HashSet<Host> KnownHosts = new HashSet<Host>();
         private readonly Signal EarlyAnnounceSignal = new Signal();
 
         public UdpClient Listener;
@@ -68,7 +62,7 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> Announce () {
-            var payload = BitConverter.GetBytes(Process.GetCurrentProcess().Id);
+            var payload = BitConverter.GetBytes(Program.Control.Port);
             yield return Listener.AsyncSend(payload, payload.Length, new IPEndPoint(IPAddress.Broadcast, DiscoveryPort));
         }
 
@@ -88,27 +82,20 @@ namespace Tsunagaro {
 
             yield return fAddresses;
 
-            int pid = BitConverter.ToInt32(packet.Bytes, 0);
-            var host = new Host {
-                EndPoint = packet.EndPoint,
-                Pid = pid
-            };
+            var endpoint = new IPEndPoint(
+                packet.EndPoint.Address, 
+                BitConverter.ToInt32(packet.Bytes, 0)
+            );
 
             if (
-                fAddresses.Result.Contains(packet.EndPoint.Address) &&
-                (pid == Process.GetCurrentProcess().Id)
+                fAddresses.Result.Contains(endpoint.Address) &&
+                (endpoint.Port == Program.Control.Port)
             ) {
+                // This discovery ping is from me
             } else {
-                bool isNew = !KnownHosts.Contains(host);
-                KnownHosts.Add(host);
+                Console.WriteLine("Got peer announcement from {0}", endpoint);
 
-                if (isNew) {
-                    Console.WriteLine("Discovered host {0} pid {1}", packet.EndPoint, pid);
-
-                    EarlyAnnounceSignal.Set();
-                } else {
-                    Console.WriteLine("Got heartbeat from host {0} pid {1}", packet.EndPoint, pid);
-                }
+                yield return Program.Peer.TryConnectTo(endpoint);
             }
         }
     }
