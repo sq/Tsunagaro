@@ -10,6 +10,7 @@ using System.Web;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using System.Linq;
+using ICSharpCode.SharpZipLib.GZip;
 
 namespace Tsunagaro {
     public class ClipboardService {
@@ -165,23 +166,47 @@ namespace Tsunagaro {
             var clipboardData = Clipboard.GetDataObject();
             var format = request.QueryString["format"];
 
+            Stream resultStream = null;
+
             var data = clipboardData.GetData(format);
             if (data is string) {
                 var s = (string)data;
                 var bytes = Encoding.UTF8.GetBytes(s);
                 request.Response.ContentType = "text/plain; charset=utf-8";
-                request.Response.ContentLength = bytes.Length;
 
-                yield return ControlService.WriteResponseBody(request, bytes);
+                resultStream = new MemoryStream(bytes);
             } else if (data is Stream) {
-                var s = (Stream)data;
                 request.Response.ContentType = "application/octet-stream";
-                request.Response.ContentLength = s.Length;
 
-                yield return ControlService.WriteResponseBody(request, s);
+                resultStream = (Stream)data;
             } else {
                 yield return ControlService.ServeError(request, 501, "Could not retrieve data in the requested format");
+                yield break;
             }
+
+            // If supported, gzip-compress the data.
+            Header header;
+            if (request.Headers.TryGetValue("Accept-Encoding", out header)) {
+                if (header.Value.ToLower().Contains("gzip")) {
+                    request.Response.Headers.Add(new Header("Content-Encoding", "gzip"));
+
+                    var uncompressedStream = resultStream;
+                    resultStream = new MemoryStream();
+
+                    using (uncompressedStream)
+                    using (var gzipStream = new GZipOutputStream(resultStream) {
+                        IsStreamOwner = false
+                    }) {
+                        uncompressedStream.CopyTo(gzipStream, 1024 * 16);
+                    }
+
+                    resultStream.Seek(0, SeekOrigin.Begin);
+                }
+            }
+
+            request.Response.ContentLength = (int)resultStream.Length;
+            using (resultStream)
+                yield return ControlService.WriteResponseBody(request, resultStream);            
         }
     }
 }
