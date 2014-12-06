@@ -17,7 +17,7 @@ namespace Tsunagaro {
 
         public static readonly string SentinelFormat = "Tsunagaro.ClipboardDataProxy";
 
-        public static readonly double? TimeoutSeconds = 1;
+        public static readonly int TimeoutSeconds = 45;
         public const int LargeDataThreshold = 8 * 1024;
 
         static ClipboardDataProxy () {
@@ -76,7 +76,7 @@ namespace Tsunagaro {
 
                 wc.DownloadStringAsync(MakeUri(format));
 
-                var text = Program.Scheduler.WaitFor(fResult);
+                var text = Program.Scheduler.WaitFor(fResult, TimeoutSeconds);
                 return text;
             }
         }
@@ -94,7 +94,7 @@ namespace Tsunagaro {
 
                 wc.DownloadDataAsync(MakeUri(format));
 
-                var bytes = Program.Scheduler.WaitFor(fResult);
+                var bytes = Program.Scheduler.WaitFor(fResult, TimeoutSeconds);
                 return new MemoryStream(bytes, false);
             }
         }
@@ -183,7 +183,7 @@ namespace Tsunagaro {
     class LongTimeoutWebClient : WebClient {
         protected override WebRequest GetWebRequest (Uri address) {
             var result = base.GetWebRequest(address);
-            result.Timeout = 1000 * 60;
+            result.Timeout = 1000 * ClipboardDataProxy.TimeoutSeconds;
             return result;
         }
     }
