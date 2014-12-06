@@ -11,6 +11,7 @@ using System.Diagnostics;
 namespace Tsunagaro {
     public class DiscoveryService {
         public const int DiscoveryPort = 9887;
+        public const double HeartbeatIntervalSeconds = 60 * 5;
 
         public readonly TaskScheduler Scheduler;
         private readonly Signal EarlyAnnounceSignal = new Signal();
@@ -47,7 +48,7 @@ namespace Tsunagaro {
 
                 yield return Future.WaitForFirst(
                     EarlyAnnounceSignal.Wait(),
-                    Scheduler.Start(new Sleep(60))
+                    Scheduler.Start(new Sleep(HeartbeatIntervalSeconds))
                 );
             }
         }
