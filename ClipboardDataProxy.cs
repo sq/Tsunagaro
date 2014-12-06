@@ -184,6 +184,12 @@ namespace Tsunagaro {
         protected override WebRequest GetWebRequest (Uri address) {
             var result = base.GetWebRequest(address);
             result.Timeout = 1000 * ClipboardDataProxy.TimeoutSeconds;
+
+            var hwr = result as HttpWebRequest;
+            if (hwr != null) {
+                hwr.AutomaticDecompression = DecompressionMethods.GZip;
+            }
+
             return result;
         }
     }
