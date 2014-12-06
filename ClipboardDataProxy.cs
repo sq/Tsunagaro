@@ -1,15 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 using System.Windows.Forms;
+using Squared.Task;
 
 namespace Tsunagaro {
     public class ClipboardDataProxy : IDataObject {
+        public static readonly HashSet<string> TextFormats = new HashSet<string> {
+            "Text", "UnicodeText", "System.String"
+        };
+
         public static readonly string SentinelFormat = "Tsunagaro.ClipboardDataProxy";
 
         public static readonly double? TimeoutSeconds = 1;
+        public const int LargeDataThreshold = 8 * 1024;
 
         static ClipboardDataProxy () {
             // Force our format to be registered
@@ -29,15 +38,76 @@ namespace Tsunagaro {
             Formats = formats;
         }
 
+        private WebClient MakeClient () {
+            var result = new WebClient();
+            result.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+
+            var lastPercentage = new int[] { -999 };
+
+            result.DownloadProgressChanged += (s, e) => {
+                if (e.TotalBytesToReceive >= LargeDataThreshold) {
+                    if (Math.Abs(lastPercentage[0] - e.ProgressPercentage) < 10)
+                        return;
+
+                    lastPercentage[0] = e.ProgressPercentage;
+                    Program.Feedback(String.Format("Transferring clipboard: {0}%", e.ProgressPercentage));
+                }
+            };
+
+            return result;
+        }
+
+        private Uri MakeUri (string format) {
+            return new Uri(
+                "http://" + Owner.RemoteEndPoint + "/clipboard/data?format=" + HttpUtility.UrlEncode(format), true
+            );
+        }
+
+        private string FetchText (string format) {
+            using (var wc = MakeClient()) {
+                var fResult = new Future<string>();
+
+                wc.DownloadStringCompleted += (s, e) => {
+                    if (e.Error != null)
+                        fResult.Fail(e.Error);
+                    else
+                        fResult.Complete(e.Result);
+                };
+
+                wc.DownloadStringAsync(MakeUri(format));
+
+                var text = Program.Scheduler.WaitFor(fResult);
+                return text;
+            }
+        }
+
+        private object FetchData (string format) {
+            using (var wc = MakeClient()) {
+                var fResult = new Future<byte[]>();
+
+                wc.DownloadDataCompleted += (s, e) => {
+                    if (e.Error != null)
+                        fResult.Fail(e.Error);
+                    else
+                        fResult.Complete(e.Result);
+                };
+
+                wc.DownloadDataAsync(MakeUri(format));
+
+                var bytes = Program.Scheduler.WaitFor(fResult);
+                return new MemoryStream(bytes, false);
+            }
+        }
+
         public object GetData (string format, bool autoConvert) {
             Console.WriteLine("GetData('{0}', autoConvert={1})", format, autoConvert);
 
             if (format == SentinelFormat)
                 return Owner.HostName;
-            else if (Formats.Contains(format))
-                return "Synthesized Text";
+            else if (TextFormats.Contains(format))
+                return FetchText(format);
             else
-                return null;
+                return FetchData(format);
         }
 
         public bool GetDataPresent (string format, bool autoConvert) {

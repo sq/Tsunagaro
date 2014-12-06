@@ -40,6 +40,7 @@ namespace Tsunagaro {
             Scheduler.Start(ListenTask(), TaskExecutionPolicy.RunAsBackgroundTask);
 
             Program.Control.Handlers.Add("/clipboard", ServeClipboard);
+            Program.Control.Handlers.Add("/clipboard/data", ServeClipboardData);
 
             Program.Peer.MessageHandlers.Add("ClipboardChanged", OnClipboardChanged);
             Program.Peer.MessageHandlers.Add("ClipboardGetDataPresent", OnClipboardGetDataPresent);
@@ -125,7 +126,7 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> ServeClipboard (HttpServer.Request request) {
-            request.Response.ContentType = "text/html";
+            request.Response.ContentType = "text/html; charset=utf-8";
 
             var clipboardData = Clipboard.GetDataObject();
 
@@ -158,6 +159,29 @@ namespace Tsunagaro {
             );
             
             yield return ControlService.WriteResponseBody(request, html);
+        }
+
+        public IEnumerator<object> ServeClipboardData (HttpServer.Request request) {
+            var clipboardData = Clipboard.GetDataObject();
+            var format = request.QueryString["format"];
+
+            var data = clipboardData.GetData(format);
+            if (data is string) {
+                var s = (string)data;
+                var bytes = Encoding.UTF8.GetBytes(s);
+                request.Response.ContentType = "text/plain; charset=utf-8";
+                request.Response.ContentLength = bytes.Length;
+
+                yield return ControlService.WriteResponseBody(request, bytes);
+            } else if (data is Stream) {
+                var s = (Stream)data;
+                request.Response.ContentType = "application/octet-stream";
+                request.Response.ContentLength = s.Length;
+
+                yield return ControlService.WriteResponseBody(request, s);
+            } else {
+                yield return ControlService.ServeError(request, 501, "Could not retrieve data in the requested format");
+            }
         }
     }
 }

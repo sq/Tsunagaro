@@ -296,7 +296,7 @@ namespace Tsunagaro {
                 var req = WebRequest.CreateHttp(String.Format(
                     "http://{0}/connect?myAddress={1}&myPort={2}",
                     endpoint,
-                    Program.Control.HostName,
+                    HttpUtility.UrlEncode(Program.Control.HostName),
                     Program.Control.Port
                 ));
                 var fResponse = req.IssueAsync(Scheduler);

@@ -202,7 +202,7 @@ namespace Tsunagaro {
                 case ".html":
                 case ".htm":
                     expandExpressions = true;
-                    return "text/html";
+                    return "text/html; charset=utf-8";
 
                 case ".css":
                     return "text/css";
@@ -342,7 +342,7 @@ namespace Tsunagaro {
         public static IEnumerator<object> ServeError (HttpServer.Request request, int errorCode, string errorText) {
             request.Response.StatusCode = errorCode;
             request.Response.StatusText = errorText;
-            request.Response.ContentType = "text/html";
+            request.Response.ContentType = "text/html; charset=utf-8";
 
             yield return WriteResponseBody(request, String.Format(
                 "<html><head><title>Error {0}</title></head><body>{1}</body></html>",
@@ -360,7 +360,7 @@ namespace Tsunagaro {
         }
 
         IEnumerator<object> ServeIndex (HttpServer.Request request) {
-            request.Response.ContentType = "text/html";
+            request.Response.ContentType = "text/html; charset=utf-8";
 
             var l = Program.StdOut.Length;
             var b = Program.StdOut.GetBuffer();

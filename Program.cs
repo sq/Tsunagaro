@@ -56,7 +56,7 @@ namespace Tsunagaro {
                 trayIcon.DoubleClick += OpenBrowser;
 
                 DoShowFeedback = (text) =>
-                    trayIcon.ShowBalloonTip(1000 + (text.Length * 20), null, text, ToolTipIcon.Info);
+                    trayIcon.ShowBalloonTip(1000 + (text.Length * 50), null, text, ToolTipIcon.Info);
 
                 Scheduler.Start(
                     StartupTask(
