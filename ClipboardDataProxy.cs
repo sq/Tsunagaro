@@ -100,8 +100,6 @@ namespace Tsunagaro {
         }
 
         public object GetData (string format, bool autoConvert) {
-            Console.WriteLine("GetData('{0}', autoConvert={1})", format, autoConvert);
-
             if (format == SentinelFormat)
                 return Owner.HostName;
             else if (TextFormats.Contains(format))
@@ -114,8 +112,6 @@ namespace Tsunagaro {
             if (format == SentinelFormat)
                 return true;
             else {
-                Console.WriteLine("GetDataPresent('{0}', autoConvert={1})", format, autoConvert);
-
                 var fGetDataPresent = Owner.SendMessage<bool>(
                     "ClipboardGetDataPresent", new Dictionary<string, object> {
                         {"Format", format}

@@ -76,8 +76,6 @@ namespace Tsunagaro {
             var clipboardData = Clipboard.GetDataObject();
             if (clipboardData.GetDataPresent(ClipboardDataProxy.SentinelFormat)) {
             } else {
-                Console.WriteLine("Broadcasting new clipboard contents");
-
                 var payload = new Dictionary<string, object> {
                     {"Owner", Program.Control.URL},
                     {"Formats", clipboardData.GetFormats()}

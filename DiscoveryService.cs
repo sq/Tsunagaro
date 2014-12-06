@@ -94,7 +94,8 @@ namespace Tsunagaro {
             ) {
                 // This discovery ping is from me
             } else {
-                Console.WriteLine("Got peer announcement from {0}", endpoint);
+                if (!Program.Peer.Peers.ContainsKey(endpoint))
+                    Console.WriteLine("Got announcement from unknown peer {0}", endpoint);
 
                 yield return Program.Peer.TryConnectTo(endpoint);
             }

@@ -214,7 +214,7 @@ namespace Tsunagaro {
                     conn.PendingResponses.Remove(token);
 
                     if (msg.ContainsKey("Result")) {
-                        Console.WriteLine("{0} <- {1}[{2}] = {3}", conn.RemoteEndPoint, pr.Message, token, msg["Result"]);
+                        // Console.WriteLine("{0} <- {1}[{2}] = {3}", conn.RemoteEndPoint, pr.Message, token, msg["Result"]);
 
                         pr.Future.Complete(msg["Result"]);
                     } else if (msg.ContainsKey("Error")) {
@@ -232,7 +232,7 @@ namespace Tsunagaro {
             }
 
             if (MessageHandlers.TryGetValue(messageName, out handler)) {
-                Console.WriteLine("{0} -> {1} (handled by {2}.{3})", conn.RemoteEndPoint, messageName, handler.Target.GetType().Name, handler.Method.Name);
+                // Console.WriteLine("{0} -> {1} (handled by {2}.{3})", conn.RemoteEndPoint, messageName, handler.Target.GetType().Name, handler.Method.Name);
 
                 var fHandler = Scheduler.Start(handler(conn, msg), TaskExecutionPolicy.RunAsBackgroundTask);
                 yield return fHandler;
