@@ -35,7 +35,7 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> Initialize () {
-            Program.JobQueue.ClipboardChanged += (s, e) =>
+            Program.MainThreadJobQueue.ClipboardChanged += (s, e) =>
                 ClipboardChangedSignal.Set();
 
             Scheduler.Start(ListenTask(), TaskExecutionPolicy.RunAsBackgroundTask);
@@ -47,6 +47,27 @@ namespace Tsunagaro {
             Program.Peer.MessageHandlers.Add("ClipboardGetDataPresent", OnClipboardGetDataPresent);
 
             yield break;
+        }
+
+        private Future<DataObject> GetClipboardData () {
+            var result = new Future<DataObject>();
+
+            Program.MainThreadJobQueue.QueueWorkItem(() => {
+                result.Complete(Clipboard.GetDataObject());
+            });
+
+            return result;
+        }
+
+        private IFuture SetClipboardData (IDataObject obj) {
+            var result = new SignalFuture();
+
+            Program.MainThreadJobQueue.QueueWorkItem(() => {
+                Clipboard.SetDataObject(obj);
+                result.Complete();
+            });
+
+            return result;
         }
 
         private IEnumerator<object> OnClipboardChanged (PeerService.Connection sender, Dictionary<string, object> message) {
@@ -63,7 +84,9 @@ namespace Tsunagaro {
         }
 
         private IEnumerator<object> OnClipboardGetDataPresent (PeerService.Connection sender, Dictionary<string, object> message) {
-            var clipboardData = Clipboard.GetDataObject();
+            var fClipboardData = GetClipboardData();
+            yield return fClipboardData;
+            var clipboardData = fClipboardData.Result;
 
             var format = Convert.ToString(message["Format"]);
 
@@ -73,7 +96,10 @@ namespace Tsunagaro {
         }
 
         private IEnumerator<object> ProcessClipboardChange () {
-            var clipboardData = Clipboard.GetDataObject();
+            var fClipboardData = GetClipboardData();
+            yield return fClipboardData;
+            var clipboardData = fClipboardData.Result;
+
             if (clipboardData.GetDataPresent(ClipboardDataProxy.SentinelFormat)) {
             } else {
                 var payload = new Dictionary<string, object> {
@@ -129,7 +155,9 @@ namespace Tsunagaro {
         public IEnumerator<object> ServeClipboard (HttpServer.Request request) {
             request.Response.ContentType = "text/html; charset=utf-8";
 
-            var clipboardData = Clipboard.GetDataObject();
+            var fClipboardData = GetClipboardData();
+            yield return fClipboardData;
+            var clipboardData = fClipboardData.Result;
 
             var html = String.Format(
                 @"<html>
@@ -163,7 +191,10 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> ServeClipboardData (HttpServer.Request request) {
-            var clipboardData = Clipboard.GetDataObject();
+            var fClipboardData = GetClipboardData();
+            yield return fClipboardData;
+            var clipboardData = fClipboardData.Result;
+
             var format = request.QueryString["format"];
 
             Stream resultStream = null;

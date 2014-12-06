@@ -10,14 +10,21 @@ using Squared.Task;
 
 namespace Tsunagaro {
     static class Program {
-        public static readonly ClipboardMonitorJobQueue JobQueue  = new ClipboardMonitorJobQueue();
-        public static readonly TaskScheduler            Scheduler = new TaskScheduler(() => JobQueue);
+        public static readonly ClipboardMonitorJobQueue MainThreadJobQueue  = new ClipboardMonitorJobQueue();
+        public static readonly TaskScheduler            MainThreadScheduler = new TaskScheduler(() => MainThreadJobQueue);
+
+        public static readonly TaskScheduler            Scheduler = new TaskScheduler(JobQueue.ThreadSafe);
+
         public static readonly ControlService           Control   = new ControlService(Scheduler);
         public static readonly DiscoveryService         Discovery = new DiscoveryService(Scheduler);
         public static readonly ClipboardService         Clipboard = new ClipboardService(Scheduler);
         public static readonly PeerService              Peer      = new PeerService(Scheduler);
 
-        public static readonly MemoryStream StdOut = new MemoryStream();
+        public static readonly MemoryStream StdOut          = new MemoryStream();
+        public static readonly Thread       SchedulerThread = new Thread(SchedulerThreadMain) {
+            Priority = ThreadPriority.AboveNormal,
+            IsBackground = true
+        };
 
         private static Action<string, bool> DoShowFeedback;
 
@@ -30,9 +37,18 @@ namespace Tsunagaro {
             Console.SetOut(tw);
             Console.SetError(tw);
 
-            Scheduler.ErrorHandler = OnTaskError;
+            Scheduler.ErrorHandler = MainThreadScheduler.ErrorHandler = OnTaskError;
 
+            SchedulerThread.Start();
             UIMain();
+        }
+
+        [STAThread]
+        private static void SchedulerThreadMain () {
+            while (true) {
+                Scheduler.WaitForWorkItems(1);
+                Scheduler.Step();
+            }
         }
 
         private static bool OnTaskError (Exception exc) {
@@ -72,7 +88,7 @@ namespace Tsunagaro {
                     }
                 };
 
-                Scheduler.Start(
+                MainThreadScheduler.Start(
                     StartupTask(
                         () => trayIcon.Visible = true
                     ), 
@@ -106,7 +122,7 @@ namespace Tsunagaro {
             if (!balloon)
                 Console.WriteLine(text);
 
-            Scheduler.QueueWorkItem(() => DoShowFeedback(text, balloon));
+            MainThreadScheduler.QueueWorkItem(() => DoShowFeedback(text, balloon));
         }
     }
 }
