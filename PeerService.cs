@@ -10,8 +10,11 @@ using System.Web;
 using System.IO;
 using System.Net.Sockets;
 using System.Net;
+using Newtonsoft.Json;
 
 namespace Tsunagaro {
+    public delegate IEnumerator<object> MessageHandler (Dictionary<string, object> message);
+
     public class PeerService {
         public class PendingConnection : IDisposable {
             public readonly IPEndPoint RemoteEndPoint;
@@ -45,6 +48,9 @@ namespace Tsunagaro {
             public readonly AsyncTextWriter   Output;
             public readonly TcpClient         TcpClient;
 
+            private int NextResponseToken;
+            public readonly Dictionary<int, Future<string>> PendingResponses = new Dictionary<int, Future<string>>();
+
             public Connection (TcpClient tcpClient, IPEndPoint remoteEndPoint) {
                 TcpClient = tcpClient;
                 Channel = new SocketDataAdapter(tcpClient.Client, false) {
@@ -59,6 +65,40 @@ namespace Tsunagaro {
                 };
             }
 
+            private SignalFuture WriteMessage (Dictionary<string, object> body) {
+                if (body == null)
+                    throw new ArgumentNullException("body");
+
+                return Output.WriteLine(JsonConvert.SerializeObject(body, Formatting.None));
+            }
+
+            // Does not wait for a response
+            public SignalFuture PostMessage (string message, Dictionary<string, object> payload = null) {
+                if (payload == null)
+                    payload = new Dictionary<string, object>();
+                
+                payload["_Message_"] = message;
+                return WriteMessage(payload);
+            }
+
+            // Waits for a response
+            public Future<string> SendMessage (string message, Dictionary<string, object> payload = null) {
+                if (payload == null)
+                    payload = new Dictionary<string, object>();
+
+                var result = new Future<string>();
+
+                int token = NextResponseToken++;
+                payload["_Message_"] = message;
+                payload["_Token_"] = token;
+                PendingResponses[token] = result;
+
+                // Wait?
+                WriteMessage(payload);
+
+                return result;
+            }
+
             public void Dispose () {
                 TcpClient.Close();
                 Channel.Dispose();
@@ -68,6 +108,8 @@ namespace Tsunagaro {
         public readonly HashSet<IPEndPoint>                Pending = new HashSet<IPEndPoint>();
         public readonly Dictionary<IPEndPoint, Connection> Peers   = new Dictionary<IPEndPoint, Connection>();
 
+        public readonly Dictionary<string, MessageHandler> MessageHandlers = new Dictionary<string, MessageHandler>();
+
         public readonly TaskScheduler Scheduler;
 
         public PeerService (TaskScheduler scheduler) {
@@ -76,14 +118,6 @@ namespace Tsunagaro {
 
         public IEnumerator<object> Initialize () {
             Program.Control.Handlers.Add("/connect", ServeConnect);
-            Program.Control.Handlers.Add("/hork", ServeHork);
-
-            yield break;
-        }
-
-        public IEnumerator<object> ServeHork (HttpServer.Request request) {
-            foreach (var peer in Peers.Values)
-                peer.Output.WriteLine("HORK");
 
             yield break;
         }
@@ -127,7 +161,7 @@ namespace Tsunagaro {
 
             request.Response.ContentType = "text/plain";
 
-            var address = String.Format("{0}:{1}", Dns.GetHostName(), pc.Port);
+            var address = String.Format("{0}:{1}", Program.Control.HostName, pc.Port);
             yield return ControlService.WriteResponseBody(request, address);
         }
 
@@ -155,6 +189,21 @@ namespace Tsunagaro {
             }
         }
 
+        private IEnumerator<object> ProcessMessage (Connection conn, string messageJson) {
+            var fParsedMessage = Future.RunInThread(() => JsonConvert.DeserializeObject<Dictionary<string, object>>(messageJson));
+            yield return fParsedMessage;
+
+            MessageHandler handler;
+            var messageName = (string)fParsedMessage.Result["_Message_"];
+
+            if (MessageHandlers.TryGetValue(messageName, out handler)) {
+                Console.WriteLine("{0} -> {1} (handled by {2}.{3})", conn.RemoteEndPoint, messageName, handler.Target.GetType().Name, handler.Method.Name);
+                yield return handler(fParsedMessage.Result);
+            } else {
+                Console.WriteLine("{0} -> {1} (unhandled)", conn.RemoteEndPoint, messageName);
+            }
+        }
+
         private IEnumerator<object> HandleConnection (Connection conn) {
             if (Peers.ContainsKey(conn.RemoteEndPoint))
                 throw new InvalidOperationException(String.Format("Got duplicate connections for {0}", conn.RemoteEndPoint));
@@ -165,7 +214,10 @@ namespace Tsunagaro {
                     var fMsg = conn.Input.ReadLine();
                     yield return fMsg;
 
-                    Console.WriteLine("Got message from {0}: \"{1}\"", conn.RemoteEndPoint, fMsg.Result);
+                    if (fMsg.Failed)
+                        break;
+
+                    Scheduler.Start(ProcessMessage(conn, fMsg.Result), TaskExecutionPolicy.RunAsBackgroundTask);
                 }
             } finally {
                 Console.WriteLine("Disconnected from {0}", conn.RemoteEndPoint);
@@ -190,7 +242,7 @@ namespace Tsunagaro {
                 var req = WebRequest.CreateHttp(String.Format(
                     "http://{0}/connect?myAddress={1}&myPort={2}",
                     endpoint,
-                    Dns.GetHostName(),
+                    Program.Control.HostName,
                     Program.Control.Port
                 ));
                 var fResponse = req.IssueAsync(Scheduler);
@@ -223,6 +275,18 @@ namespace Tsunagaro {
             } finally {
                 Pending.Remove(endpoint);
             }
+        }
+
+        public IFuture Broadcast (string message, Dictionary<string, object> payload = null) {
+            if (Peers.Count == 0)
+                return new SignalFuture(true);
+
+            var futures = new List<SignalFuture>();
+
+            foreach (var peer in Peers.Values)
+                futures.Add(peer.PostMessage(message, payload));
+
+            return Future.WaitForAll(futures);
         }
     }
 }

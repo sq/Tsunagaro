@@ -9,24 +9,24 @@ namespace Tsunagaro {
     public class ClipboardDataProxy : IDataObject {
         public static readonly string SentinelFormat = "Tsunagaro.ClipboardDataProxy";
 
-        public string SentinelPayload;
-
         static ClipboardDataProxy () {
             // Force our format to be registered
             DataFormats.GetFormat(SentinelFormat);
         }
 
-        readonly string[] Formats = new string[] {
-            SentinelFormat,
-            "Text",
-            "UnicodeText"
-        };
+        public readonly string Sentinel;
+        public readonly string[] Formats;
+
+        public ClipboardDataProxy (string sentinel, string[] formats) {
+            Sentinel = sentinel;
+            Formats = formats;
+        }
 
         public object GetData (string format, bool autoConvert) {
             Console.WriteLine("GetData('{0}', autoConvert={1})", format, autoConvert);
 
             if (format == SentinelFormat)
-                return SentinelPayload;
+                return Sentinel;
             else if (Formats.Contains(format))
                 return "Synthesized Text";
             else

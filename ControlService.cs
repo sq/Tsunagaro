@@ -22,6 +22,7 @@ namespace Tsunagaro {
         const int PortsToTry = 10;
 
         public int Port { get; private set; }
+        public string HostName { get; private set; }
         public string URL { get; private set; }
 
         public readonly Dictionary<string, Func<HttpServer.Request, IEnumerator<object>>> Handlers;
@@ -54,7 +55,8 @@ namespace Tsunagaro {
                 if (!f.Result) {
                     HttpServer.EndPoints.Add(ep);
                     Port = portToTry;
-                    URL = String.Format("http://localhost:{0}/", Port);
+                    HostName = Dns.GetHostName();
+                    URL = String.Format("http://{0}:{1}/", HostName, Port);
                     break;
                 }
             }
@@ -66,7 +68,7 @@ namespace Tsunagaro {
 
             Scheduler.Start(HttpTask(), TaskExecutionPolicy.RunAsBackgroundTask);
 
-            Console.WriteLine("Control service active at http://{0}:{1}/", Dns.GetHostName(), Port);
+            Console.WriteLine("Control service active at {0}", URL);
         }
 
         private static bool IsEndPointBound (EndPoint endPoint) {

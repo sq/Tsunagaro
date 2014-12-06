@@ -19,6 +19,8 @@ namespace Tsunagaro {
 
         public static readonly MemoryStream StdOut = new MemoryStream();
 
+        private static Action<string> DoShowFeedback;
+
         [STAThread]
         static void Main () {
             var enc = new UTF8Encoding(false);
@@ -53,6 +55,9 @@ namespace Tsunagaro {
             }) {
                 trayIcon.DoubleClick += OpenBrowser;
 
+                DoShowFeedback = (text) =>
+                    trayIcon.ShowBalloonTip(1000 + (text.Length * 20), null, text, ToolTipIcon.Info);
+
                 Scheduler.Start(
                     StartupTask(
                         () => trayIcon.Visible = true
@@ -81,6 +86,12 @@ namespace Tsunagaro {
             );
 
             ready();
+        }
+
+        // Communicate status to the user via tray bubble if enabled
+        public static void Feedback (string text) {
+            Console.WriteLine(text);
+            Scheduler.QueueWorkItem(() => DoShowFeedback(text));
         }
     }
 }

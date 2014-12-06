@@ -8,6 +8,8 @@ using Squared.Task.Http;
 using System.Windows.Forms;
 using System.Web;
 using System.IO;
+using Newtonsoft.Json.Linq;
+using System.Linq;
 
 namespace Tsunagaro {
     public class ClipboardService {
@@ -29,38 +31,65 @@ namespace Tsunagaro {
 
         public ClipboardService (TaskScheduler scheduler) {
             Scheduler = scheduler;
-
-            Program.JobQueue.ClipboardChanged += (s, e) =>
-                ClipboardChangedSignal.Set();
         }
 
         public IEnumerator<object> Initialize () {
+            Program.JobQueue.ClipboardChanged += (s, e) =>
+                ClipboardChangedSignal.Set();
+
             Scheduler.Start(ListenTask(), TaskExecutionPolicy.RunAsBackgroundTask);
 
             Program.Control.Handlers.Add("/clipboard", ServeClipboard);
 
+            Program.Peer.MessageHandlers.Add(
+                "ClipboardChanged", OnClipboardChanged
+            );
+
             yield break;
         }
 
-        public IEnumerator<object> ListenTask () {
-            yield return new Sleep(1);
-            Clipboard.SetDataObject(new ClipboardDataProxy {
-                SentinelPayload = System.Net.Dns.GetHostName()
-            });
+        private IEnumerator<object> OnClipboardChanged (Dictionary<string, object> message) {
+            var formatsRaw = (JArray)message["Formats"];
+            var formats = (from v in formatsRaw.Children() select v.Value<string>())
+                .Concat(new[] { ClipboardDataProxy.SentinelFormat })
+                .ToArray();
 
+            var proxy = PlaceProxyClipboard(message["Owner"].ToString(), formats);
+
+            Program.Feedback(proxy.Sentinel + " owns clipboard");
+
+            yield break;
+        }
+
+        private IEnumerator<object> ProcessClipboardChange () {
+            var clipboardData = Clipboard.GetDataObject();
+            if (clipboardData.GetDataPresent(ClipboardDataProxy.SentinelFormat)) {
+            } else {
+                Console.WriteLine("Broadcasting new clipboard contents");
+
+                var payload = new Dictionary<string, object> {
+                            {"Owner", Program.Control.URL},
+                            {"Formats", clipboardData.GetFormats()}
+                        };
+
+                yield return Program.Peer.Broadcast("ClipboardChanged", payload);
+            }
+        }
+
+        public IEnumerator<object> ListenTask () {
             while (true) {
                 yield return ClipboardChangedSignal.Wait();
 
-                try {
-                    var clipboardData = Clipboard.GetDataObject();
-                    if (clipboardData.GetDataPresent(ClipboardDataProxy.SentinelFormat))
-                        Console.WriteLine("Clipboard updated with data from another host");
-                    else
-                        Console.WriteLine("Clipboard updated with local data");
-                } catch {
-                    Console.WriteLine("Clipboard updated with unreadable data");
-                }
+                yield return Scheduler.Start(ProcessClipboardChange(), TaskExecutionPolicy.RunAsBackgroundTask);
             }
+        }
+
+        public ClipboardDataProxy PlaceProxyClipboard (string owner, string[] formats) {
+            var result = new ClipboardDataProxy(owner, formats);
+
+            Clipboard.SetDataObject(result, false, 5, 15);
+
+            return result;
         }
 
         private static string GenerateClipboardDataInfo (IDataObject data, string format) {
