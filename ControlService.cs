@@ -386,7 +386,7 @@ namespace Tsunagaro {
                 HttpUtility.HtmlEncode(logText),
                 String.Join(
                     Environment.NewLine,
-                    from p in Program.Peer.Peers
+                    from p in Program.Peer.Peers.Values
                     select String.Format(
                         "<tr><td>{0}</td><td>{1}</td></tr>",
                         p.HostName,

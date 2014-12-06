@@ -56,8 +56,8 @@ namespace Tsunagaro {
             }
         }
 
-        public readonly HashSet<PendingConnection> Pending = new HashSet<PendingConnection>();
-        public readonly HashSet<Connection>        Peers = new HashSet<Connection>();
+        public readonly HashSet<PendingConnection>         Pending = new HashSet<PendingConnection>();
+        public readonly Dictionary<IPEndPoint, Connection> Peers   = new Dictionary<IPEndPoint, Connection>();
 
         public readonly TaskScheduler Scheduler;
 
@@ -80,8 +80,29 @@ namespace Tsunagaro {
         }
 
         public IEnumerator<object> ServeConnect (HttpServer.Request request) {
-            var pc = new PendingConnection((IPEndPoint)request.RemoteEndPoint);
-            Console.WriteLine("Establishing connection with {0}", pc.RemoteEndPoint);
+            if (
+                !request.QueryString.ContainsKey("myAddress") ||
+                !request.QueryString.ContainsKey("myPort")
+            ) {
+                yield return ControlService.ServeError(request, 501, "argument missing");
+                yield break;
+            }
+
+            var fRemoteEndPoint = Future.RunInThread(() => 
+                new IPEndPoint(
+                    Dns.GetHostByName(request.QueryString["myAddress"]).AddressList.First(),
+                    int.Parse(request.QueryString["myPort"])
+                )
+            );
+            yield return fRemoteEndPoint;
+
+            if (!fRemoteEndPoint.Result.Address.Equals(((IPEndPoint)request.RemoteEndPoint).Address)) {
+                yield return ControlService.ServeError(request, 501, "address mismatch");
+                yield break;
+            }
+
+            var pc = new PendingConnection(fRemoteEndPoint.Result);
+            Console.WriteLine("Establishing connection with {0}", fRemoteEndPoint.Result);
             Scheduler.Start(AwaitConnection(pc), TaskExecutionPolicy.RunAsBackgroundTask);
 
             request.Response.ContentType = "text/plain";
@@ -112,12 +133,12 @@ namespace Tsunagaro {
         }
 
         private IEnumerator<object> HandleConnection (Connection conn) {
-            Peers.Add(conn);
+            Peers.Add(conn.RemoteEndPoint, conn);
             try {
-                yield break;
+                yield return new Sleep(60);
             } finally {
                 Console.WriteLine("Disconnected from {0}", conn.RemoteEndPoint);
-                Peers.Remove(conn);
+                Peers.Remove(conn.RemoteEndPoint);
                 conn.Dispose();
             }
         }
@@ -125,7 +146,12 @@ namespace Tsunagaro {
         public IEnumerator<object> TryConnectTo (IPEndPoint endpoint) {
             Console.WriteLine("Handshaking with {0}", endpoint);
 
-            var req = WebRequest.CreateHttp(String.Format("http://{0}/connect", endpoint));
+            var req = WebRequest.CreateHttp(String.Format(
+                "http://{0}/connect?myAddress={1}&myPort={2}", 
+                endpoint,
+                Dns.GetHostName(),
+                Program.Control.Port
+            ));
             var fResponse = req.IssueAsync(Scheduler);
 
             yield return fResponse;
