@@ -65,41 +65,16 @@ namespace Tsunagaro {
 
         private string FetchText (string format) {
             using (var wc = MakeClient()) {
-                var fResult = new Future<string>();
-
-                wc.DownloadStringCompleted += (s, e) => {
-                    if (e.Error != null)
-                        fResult.Fail(e.Error);
-                    else
-                        fResult.Complete(e.Result);
-                };
-
-                wc.DownloadStringAsync(MakeUri(format));
-
-                var text = Program.Scheduler.WaitFor(fResult, TimeoutSeconds);
-
-                Program.Feedback("", false);
-                return text;
+                return wc.DownloadString(MakeUri(format));
             }
         }
 
         private object FetchData (string format) {
             using (var wc = MakeClient()) {
-                var fResult = new Future<byte[]>();
-
-                wc.DownloadDataCompleted += (s, e) => {
-                    if (e.Error != null)
-                        fResult.Fail(e.Error);
-                    else
-                        fResult.Complete(e.Result);
-                };
-
-                wc.DownloadDataAsync(MakeUri(format));
-
-                var bytes = Program.Scheduler.WaitFor(fResult, TimeoutSeconds);
-
-                Program.Feedback("", false);
-                return new MemoryStream(bytes, false);
+                return new MemoryStream(
+                    wc.DownloadData(MakeUri(format)),
+                    false
+                );
             }
         }
 
@@ -122,9 +97,8 @@ namespace Tsunagaro {
                     }
                 );
 
-                var result = Program.Scheduler.WaitFor(fGetDataPresent, TimeoutSeconds);
-
-                return result;
+                fGetDataPresent.GetCompletionEvent().Wait(TimeoutSeconds * 1000);
+                return fGetDataPresent.Result;
             }
         }
 
