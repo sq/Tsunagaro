@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Squared.Task;
 using Squared.Task.Http;
 using Squared.Task.IO;
+using System.Linq;
 
 namespace Tsunagaro {
     public class ControlService {
@@ -388,13 +389,28 @@ namespace Tsunagaro {
         <meta http-equiv=""refresh"" content=""10"">
     </head>
     <body>
+        <h2>Peers</h2>
+        <table>
+            <tr><th>Machine Name</th><th>IP</th><th>PID</th></tr>
+{1}
+        </table>
         <h2>Log</h2>
         <pre>
 {0}
         </pre>
     </body>
 </html>",
-                HttpUtility.HtmlEncode(logText)
+                HttpUtility.HtmlEncode(logText),
+                String.Join(
+                    Environment.NewLine,
+                    from h in Program.Discovery.KnownHosts 
+                    select String.Format(
+                        "<tr><td>{0}</td><td>{1}</td><td>{2}</td></tr>",
+                        Dns.GetHostByAddress(h.EndPoint.Address).HostName,
+                        h.EndPoint.Address,
+                        h.Pid
+                    )
+                )
             );
 
             yield return WriteResponseBody(request, html);

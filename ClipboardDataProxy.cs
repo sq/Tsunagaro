@@ -7,7 +7,17 @@ using System.Windows.Forms;
 
 namespace Tsunagaro {
     public class ClipboardDataProxy : IDataObject {
+        public static readonly string SentinelFormat = "Tsunagaro.ClipboardDataProxy";
+
+        public string SentinelPayload;
+
+        static ClipboardDataProxy () {
+            // Force our format to be registered
+            DataFormats.GetFormat(SentinelFormat);
+        }
+
         readonly string[] Formats = new string[] {
+            SentinelFormat,
             "Text",
             "UnicodeText"
         };
@@ -15,7 +25,9 @@ namespace Tsunagaro {
         public object GetData (string format, bool autoConvert) {
             Console.WriteLine("GetData('{0}', autoConvert={1})", format, autoConvert);
 
-            if (Formats.Contains(format))
+            if (format == SentinelFormat)
+                return SentinelPayload;
+            else if (Formats.Contains(format))
                 return "Synthesized Text";
             else
                 return null;
@@ -24,7 +36,10 @@ namespace Tsunagaro {
         public bool GetDataPresent (string format, bool autoConvert) {
             Console.WriteLine("GetDataPresent('{0}', autoConvert={1})", format, autoConvert);
 
-            return Formats.Contains(format);
+            if (format == SentinelFormat)
+                return true;
+            else
+                return Formats.Contains(format);
         }
 
         public string[] GetFormats (bool autoConvert) {

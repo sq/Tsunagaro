@@ -44,12 +44,22 @@ namespace Tsunagaro {
 
         public IEnumerator<object> ListenTask () {
             yield return new Sleep(1);
-            Clipboard.SetDataObject(new ClipboardDataProxy());
+            Clipboard.SetDataObject(new ClipboardDataProxy {
+                SentinelPayload = System.Net.Dns.GetHostName()
+            });
 
             while (true) {
                 yield return ClipboardChangedSignal.Wait();
 
-                Console.WriteLine("Clipboard changed");
+                try {
+                    var clipboardData = Clipboard.GetDataObject();
+                    if (clipboardData.GetDataPresent(ClipboardDataProxy.SentinelFormat))
+                        Console.WriteLine("Clipboard updated with data from another host");
+                    else
+                        Console.WriteLine("Clipboard updated with local data");
+                } catch {
+                    Console.WriteLine("Clipboard updated with unreadable data");
+                }
             }
         }
 
@@ -89,12 +99,17 @@ namespace Tsunagaro {
         <meta http-equiv=""refresh"" content=""10"">
     </head>
     <body>
-        <h2>Clipboard Formats</h2>
+        <h2>Status</h2>
+        {0}
+        <h2>Formats</h2>
         <pre>
-{0}
+{1}
         </pre>
     </body>
 </html>",
+                clipboardData.GetDataPresent(ClipboardDataProxy.SentinelFormat)
+                    ? "Remote data from " + (string)clipboardData.GetData(ClipboardDataProxy.SentinelFormat)
+                    : "Local data",
                 String.Join(
                     "<br>",
                     (

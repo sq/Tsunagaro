@@ -10,11 +10,12 @@ using Squared.Task;
 
 namespace Tsunagaro {
     static class Program {
-        public static readonly ClipboardMonitorJobQueue JobQueue = new ClipboardMonitorJobQueue();
-        public static readonly TaskScheduler Scheduler = new TaskScheduler(() => JobQueue);
-        public static readonly ControlService Control = new ControlService(Scheduler);
-        public static readonly DiscoveryService Discovery = new DiscoveryService(Scheduler);
-        public static readonly ClipboardService Clipboard = new ClipboardService(Scheduler);
+        public static readonly ClipboardMonitorJobQueue JobQueue  = new ClipboardMonitorJobQueue();
+        public static readonly TaskScheduler            Scheduler = new TaskScheduler(() => JobQueue);
+        public static readonly ControlService           Control   = new ControlService(Scheduler);
+        public static readonly DiscoveryService         Discovery = new DiscoveryService(Scheduler);
+        public static readonly ClipboardService         Clipboard = new ClipboardService(Scheduler);
+        public static readonly PeerService              Peer      = new PeerService(Scheduler);
 
         public static readonly MemoryStream StdOut = new MemoryStream();
 
@@ -72,6 +73,7 @@ namespace Tsunagaro {
                 Control.Initialize(),
                 Discovery.Initialize(),
                 Clipboard.Initialize(),
+                Peer.Initialize()
             };
 
             yield return Future.WaitForAll(

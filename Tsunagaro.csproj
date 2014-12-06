@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="ClipboardDataProxy.cs" />
     <Compile Include="ClipboardMonitorJobQueue.cs" />
+    <Compile Include="PeerService.cs" />
     <Compile Include="ControlService.cs" />
     <Compile Include="ClipboardService.cs" />
     <Compile Include="DiscoveryService.cs" />
