@@ -9,16 +9,23 @@ namespace Tsunagaro {
     public class ClipboardDataProxy : IDataObject {
         public static readonly string SentinelFormat = "Tsunagaro.ClipboardDataProxy";
 
+        public static readonly double? TimeoutSeconds = 1;
+
         static ClipboardDataProxy () {
             // Force our format to be registered
             DataFormats.GetFormat(SentinelFormat);
         }
 
-        public readonly string Sentinel;
+        public readonly PeerService.Connection Owner;
         public readonly string[] Formats;
 
-        public ClipboardDataProxy (string sentinel, string[] formats) {
-            Sentinel = sentinel;
+        public ClipboardDataProxy (PeerService.Connection owner, string[] formats) {
+            if (owner == null)
+                throw new ArgumentNullException("owner");
+            if (formats == null)
+                throw new ArgumentNullException("formats");
+
+            Owner = owner;
             Formats = formats;
         }
 
@@ -26,7 +33,7 @@ namespace Tsunagaro {
             Console.WriteLine("GetData('{0}', autoConvert={1})", format, autoConvert);
 
             if (format == SentinelFormat)
-                return Sentinel;
+                return Owner.HostName;
             else if (Formats.Contains(format))
                 return "Synthesized Text";
             else
@@ -34,17 +41,24 @@ namespace Tsunagaro {
         }
 
         public bool GetDataPresent (string format, bool autoConvert) {
-            Console.WriteLine("GetDataPresent('{0}', autoConvert={1})", format, autoConvert);
-
             if (format == SentinelFormat)
                 return true;
-            else
-                return Formats.Contains(format);
+            else {
+                Console.WriteLine("GetDataPresent('{0}', autoConvert={1})", format, autoConvert);
+
+                var fGetDataPresent = Owner.SendMessage<bool>(
+                    "ClipboardGetDataPresent", new Dictionary<string, object> {
+                        {"Format", format}
+                    }
+                );
+
+                var result = Program.Scheduler.WaitFor(fGetDataPresent, TimeoutSeconds);
+
+                return result;
+            }
         }
 
         public string[] GetFormats (bool autoConvert) {
-            Console.WriteLine("GetFormats(autoConvert={0})", autoConvert);
-
             return Formats;
         }
 

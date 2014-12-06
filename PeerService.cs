@@ -13,7 +13,7 @@ using System.Net;
 using Newtonsoft.Json;
 
 namespace Tsunagaro {
-    public delegate IEnumerator<object> MessageHandler (Dictionary<string, object> message);
+    public delegate IEnumerator<object> MessageHandler (PeerService.Connection sender, Dictionary<string, object> message);
 
     public class PeerService {
         public class PendingConnection : IDisposable {
@@ -39,6 +39,11 @@ namespace Tsunagaro {
         }
 
         public class Connection : IDisposable {
+            public struct PendingResponse {
+                public string Message;
+                public IFuture Future;
+            }
+
             public readonly string     HostName;
             public readonly IPEndPoint RemoteEndPoint;
             public readonly int        Port;
@@ -49,7 +54,7 @@ namespace Tsunagaro {
             public readonly TcpClient         TcpClient;
 
             private int NextResponseToken;
-            public readonly Dictionary<int, Future<string>> PendingResponses = new Dictionary<int, Future<string>>();
+            public readonly Dictionary<int, PendingResponse> PendingResponses = new Dictionary<int, PendingResponse>();
 
             public Connection (TcpClient tcpClient, IPEndPoint remoteEndPoint) {
                 TcpClient = tcpClient;
@@ -82,16 +87,19 @@ namespace Tsunagaro {
             }
 
             // Waits for a response
-            public Future<string> SendMessage (string message, Dictionary<string, object> payload = null) {
+            public Future<TResult> SendMessage<TResult> (string message, Dictionary<string, object> payload = null) {
                 if (payload == null)
                     payload = new Dictionary<string, object>();
 
-                var result = new Future<string>();
+                var result = new Future<TResult>();
 
                 int token = NextResponseToken++;
                 payload["_Message_"] = message;
                 payload["_Token_"] = token;
-                PendingResponses[token] = result;
+                PendingResponses[token] = new PendingResponse {
+                    Message = message,
+                    Future = result
+                };
 
                 // Wait?
                 WriteMessage(payload);
@@ -193,12 +201,58 @@ namespace Tsunagaro {
             var fParsedMessage = Future.RunInThread(() => JsonConvert.DeserializeObject<Dictionary<string, object>>(messageJson));
             yield return fParsedMessage;
 
+            var msg = fParsedMessage.Result;
+
             MessageHandler handler;
-            var messageName = (string)fParsedMessage.Result["_Message_"];
+            var messageName = Convert.ToString(msg["_Message_"]);
+
+            if (messageName == "_Result_") {
+                int token = Convert.ToInt32(msg["Token"]);
+                Connection.PendingResponse pr;
+
+                if (conn.PendingResponses.TryGetValue(token, out pr)) {
+                    conn.PendingResponses.Remove(token);
+
+                    if (msg.ContainsKey("Result")) {
+                        Console.WriteLine("{0} <- {1}[{2}] = {3}", conn.RemoteEndPoint, pr.Message, token, msg["Result"]);
+
+                        pr.Future.Complete(msg["Result"]);
+                    } else if (msg.ContainsKey("Error")) {
+                        Console.WriteLine("{0} <- {1}[{2}] = error", conn.RemoteEndPoint, pr.Message, token);
+
+                        pr.Future.Fail(new Exception(Convert.ToString(msg["Error"])));
+                    } else {
+                        Console.WriteLine("{0} <- {1}[{2}] = error", conn.RemoteEndPoint, pr.Message, token);
+
+                        pr.Future.Fail(new Exception("Unknown error"));
+                    }
+                }
+
+                yield break;
+            }
 
             if (MessageHandlers.TryGetValue(messageName, out handler)) {
                 Console.WriteLine("{0} -> {1} (handled by {2}.{3})", conn.RemoteEndPoint, messageName, handler.Target.GetType().Name, handler.Method.Name);
-                yield return handler(fParsedMessage.Result);
+
+                var fHandler = Scheduler.Start(handler(conn, msg), TaskExecutionPolicy.RunAsBackgroundTask);
+                yield return fHandler;
+
+                if (msg.ContainsKey("_Token_")) {
+                    int token = Convert.ToInt32(msg["_Token_"]);
+                    var payload = new Dictionary<string, object> {
+                        {"Token", token},
+                    };
+
+                    if (fHandler.Failed) {
+                        payload["Error"] = fHandler.Error.ToString();
+                    } else {
+                        payload["Result"] = fHandler.Result;
+                    }
+
+                    yield return conn.PostMessage(
+                        "_Result_", payload
+                    );
+                }
             } else {
                 Console.WriteLine("{0} -> {1} (unhandled)", conn.RemoteEndPoint, messageName);
             }

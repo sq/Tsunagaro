@@ -41,24 +41,33 @@ namespace Tsunagaro {
 
             Program.Control.Handlers.Add("/clipboard", ServeClipboard);
 
-            Program.Peer.MessageHandlers.Add(
-                "ClipboardChanged", OnClipboardChanged
-            );
+            Program.Peer.MessageHandlers.Add("ClipboardChanged", OnClipboardChanged);
+            Program.Peer.MessageHandlers.Add("ClipboardGetDataPresent", OnClipboardGetDataPresent);
 
             yield break;
         }
 
-        private IEnumerator<object> OnClipboardChanged (Dictionary<string, object> message) {
+        private IEnumerator<object> OnClipboardChanged (PeerService.Connection sender, Dictionary<string, object> message) {
             var formatsRaw = (JArray)message["Formats"];
             var formats = (from v in formatsRaw.Children() select v.Value<string>())
                 .Concat(new[] { ClipboardDataProxy.SentinelFormat })
                 .ToArray();
 
-            var proxy = PlaceProxyClipboard(message["Owner"].ToString(), formats);
+            var proxy = PlaceProxyClipboard(sender, formats);
 
-            Program.Feedback(proxy.Sentinel + " owns clipboard");
+            Program.Feedback(sender.HostName + " owns clipboard");
 
             yield break;
+        }
+
+        private IEnumerator<object> OnClipboardGetDataPresent (PeerService.Connection sender, Dictionary<string, object> message) {
+            var clipboardData = Clipboard.GetDataObject();
+
+            var format = Convert.ToString(message["Format"]);
+
+            yield return new Result(
+                clipboardData.GetDataPresent(format, true)
+            );
         }
 
         private IEnumerator<object> ProcessClipboardChange () {
@@ -68,9 +77,9 @@ namespace Tsunagaro {
                 Console.WriteLine("Broadcasting new clipboard contents");
 
                 var payload = new Dictionary<string, object> {
-                            {"Owner", Program.Control.URL},
-                            {"Formats", clipboardData.GetFormats()}
-                        };
+                    {"Owner", Program.Control.URL},
+                    {"Formats", clipboardData.GetFormats()}
+                };
 
                 yield return Program.Peer.Broadcast("ClipboardChanged", payload);
             }
@@ -84,7 +93,7 @@ namespace Tsunagaro {
             }
         }
 
-        public ClipboardDataProxy PlaceProxyClipboard (string owner, string[] formats) {
+        public ClipboardDataProxy PlaceProxyClipboard (PeerService.Connection owner, string[] formats) {
             var result = new ClipboardDataProxy(owner, formats);
 
             Clipboard.SetDataObject(result, false, 5, 15);
