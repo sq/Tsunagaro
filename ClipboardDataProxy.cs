@@ -39,7 +39,7 @@ namespace Tsunagaro {
         }
 
         private WebClient MakeClient () {
-            var result = new WebClient();
+            var result = new LongTimeoutWebClient();
             result.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
 
             var lastPercentage = new int[] { -999 };
@@ -177,6 +177,14 @@ namespace Tsunagaro {
 
         public void SetData (string format, bool autoConvert, object data) {
             throw new NotImplementedException();
+        }
+    }
+
+    class LongTimeoutWebClient : WebClient {
+        protected override WebRequest GetWebRequest (Uri address) {
+            var result = base.GetWebRequest(address);
+            result.Timeout = 1000 * 60;
+            return result;
         }
     }
 }
