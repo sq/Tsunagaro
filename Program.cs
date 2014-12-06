@@ -19,7 +19,7 @@ namespace Tsunagaro {
 
         public static readonly MemoryStream StdOut = new MemoryStream();
 
-        private static Action<string> DoShowFeedback;
+        private static Action<string, bool> DoShowFeedback;
 
         [STAThread]
         static void Main () {
@@ -55,8 +55,22 @@ namespace Tsunagaro {
             }) {
                 trayIcon.DoubleClick += OpenBrowser;
 
-                DoShowFeedback = (text) =>
-                    trayIcon.ShowBalloonTip(1000 + (text.Length * 50), null, text, ToolTipIcon.Info);
+                DoShowFeedback = (text, balloon) => {
+                    if (!String.IsNullOrWhiteSpace(text)) {
+                        trayIcon.Text = "Tsunagaro - " + text;
+                    } else {
+                        trayIcon.Text = "Tsunagaro";
+                    }
+
+                    if (balloon) {
+                        trayIcon.BalloonTipText = text;
+                        trayIcon.ShowBalloonTip(1000 + (text.Length * 50));
+                    } else if (trayIcon.BalloonTipText != "") {
+                        trayIcon.BalloonTipText = "";
+                        trayIcon.Visible = false;
+                        trayIcon.Visible = true;
+                    }
+                };
 
                 Scheduler.Start(
                     StartupTask(
@@ -88,10 +102,11 @@ namespace Tsunagaro {
             ready();
         }
 
-        // Communicate status to the user via tray bubble if enabled
-        public static void Feedback (string text) {
-            Console.WriteLine(text);
-            Scheduler.QueueWorkItem(() => DoShowFeedback(text));
+        public static void Feedback (string text, bool balloon) {
+            if (!balloon)
+                Console.WriteLine(text);
+
+            Scheduler.QueueWorkItem(() => DoShowFeedback(text, balloon));
         }
     }
 }

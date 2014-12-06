@@ -57,7 +57,7 @@ namespace Tsunagaro {
 
             var proxy = PlaceProxyClipboard(sender, formats);
 
-            Program.Feedback(sender.HostName + " owns clipboard");
+            Program.Feedback(sender.HostName + " owns the clipboard", false);
 
             yield break;
         }
@@ -80,6 +80,8 @@ namespace Tsunagaro {
                     {"Owner", Program.Control.URL},
                     {"Formats", clipboardData.GetFormats()}
                 };
+
+                Program.Feedback("I own the clipboard", false);
 
                 yield return Program.Peer.Broadcast("ClipboardChanged", payload);
             }

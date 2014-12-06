@@ -46,11 +46,11 @@ namespace Tsunagaro {
 
             result.DownloadProgressChanged += (s, e) => {
                 if (e.TotalBytesToReceive >= LargeDataThreshold) {
-                    if (Math.Abs(lastPercentage[0] - e.ProgressPercentage) < 10)
+                    if (Math.Abs(lastPercentage[0] - e.ProgressPercentage) < 5)
                         return;
 
                     lastPercentage[0] = e.ProgressPercentage;
-                    Program.Feedback(String.Format("Transferring clipboard: {0}%", e.ProgressPercentage));
+                    Program.Feedback(String.Format("Transferring clipboard: {0}%", e.ProgressPercentage), true);
                 }
             };
 
@@ -77,6 +77,8 @@ namespace Tsunagaro {
                 wc.DownloadStringAsync(MakeUri(format));
 
                 var text = Program.Scheduler.WaitFor(fResult, TimeoutSeconds);
+
+                Program.Feedback("", false);
                 return text;
             }
         }
@@ -95,6 +97,8 @@ namespace Tsunagaro {
                 wc.DownloadDataAsync(MakeUri(format));
 
                 var bytes = Program.Scheduler.WaitFor(fResult, TimeoutSeconds);
+
+                Program.Feedback("", false);
                 return new MemoryStream(bytes, false);
             }
         }
