@@ -221,7 +221,7 @@ namespace Tsunagaro {
             var data = fData.Result;
             if (data is string) {
                 var s = (string)data;
-                var bytes = Encoding.UTF8.GetBytes(s);
+                var bytes = (new UTF8Encoding(false)).GetBytes(s);
                 request.Response.ContentType = "text/plain; charset=utf-8";
 
                 resultStream = new MemoryStream(bytes);

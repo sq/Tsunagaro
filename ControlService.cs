@@ -314,7 +314,7 @@ namespace Tsunagaro {
             if (text == null)
                 return request.Response.SendHeaders();
 
-            return request.Response.SendResponse(text, Encoding.UTF8);
+            return request.Response.SendResponse(text, new UTF8Encoding(false));
         }
 
         public IEnumerator<object> ServeExpandedText (HttpServer.Request request, Func<Stream> openSource, string contentType, Dictionary<string, object> extraParameters = null) {
@@ -364,7 +364,7 @@ namespace Tsunagaro {
 
             var l = Program.StdOut.Length;
             var b = Program.StdOut.GetBuffer();
-            var logText = Encoding.UTF8.GetString(b, 0, (int)l);
+            var logText = (new UTF8Encoding(false)).GetString(b, 0, (int)l);
 
             var html = String.Format(
                 @"<html>

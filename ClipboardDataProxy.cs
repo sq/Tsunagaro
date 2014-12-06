@@ -54,6 +54,8 @@ namespace Tsunagaro {
                 }
             };
 
+            result.Encoding = new UTF8Encoding(false);
+
             return result;
         }
 
@@ -65,14 +67,17 @@ namespace Tsunagaro {
 
         private string FetchText (string format) {
             using (var wc = MakeClient()) {
-                return wc.DownloadString(MakeUri(format));
+                var result = wc.DownloadString(MakeUri(format));
+                return result;
             }
         }
 
         private object FetchData (string format) {
             using (var wc = MakeClient()) {
+                var result = wc.DownloadData(MakeUri(format));
+
                 return new MemoryStream(
-                    wc.DownloadData(MakeUri(format)),
+                    result,
                     false
                 );
             }
