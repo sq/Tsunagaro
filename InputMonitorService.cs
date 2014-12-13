@@ -94,7 +94,14 @@ namespace Tsunagaro {
 
             var port = ((IPEndPoint)listener.Server.LocalEndPoint).Port;
 
-            var psi = new ProcessStartInfo("InputHook.exe", port.ToString());
+            var psi = new ProcessStartInfo("InputHook.exe", port.ToString()) {
+                UseShellExecute = false,
+                RedirectStandardOutput = false,
+                RedirectStandardError = false,
+                RedirectStandardInput = true,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
 
             while (true) {
                 var fProc = Future.RunInThread(() => Process.Start(psi));

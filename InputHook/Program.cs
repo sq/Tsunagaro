@@ -24,6 +24,7 @@ namespace Tsunagaro {
             Monitor = new Win32.InputEventMonitor();
 
             Scheduler.Start(MainTask(port), TaskExecutionPolicy.RunAsBackgroundTask);
+            Scheduler.Start(MonitorParent(), TaskExecutionPolicy.RunAsBackgroundTask);
 
             while (true) {
                 Scheduler.Step();
@@ -40,6 +41,16 @@ namespace Tsunagaro {
             return (events.Count * MessageSize);
         }
 
+        public static IEnumerator<object> MonitorParent () {
+            var fTerminated = Future.RunInThread<string>(Console.In.ReadToEnd);
+
+            yield return fTerminated;
+
+            Console.WriteLine("INPUTHOOK: Parent closed input stream");
+
+            Environment.Exit(2);
+        }
+
         public static IEnumerator<object> MainTask (int port) {
             var endpoint = new IPEndPoint(IPAddress.Loopback, port);
 
@@ -49,7 +60,7 @@ namespace Tsunagaro {
             var maxMessagesPerPacket = PacketSize / MessageSize;
             var eventBuffer = new Win32.InputEvent[maxMessagesPerPacket];
 
-            Console.WriteLine("Connecting to " + endpoint);
+            Console.WriteLine("INPUTHOOK: Connecting to " + endpoint);
 
             var fClient = Network.ConnectTo(endpoint.Address, endpoint.Port);
             yield return fClient;
@@ -58,7 +69,7 @@ namespace Tsunagaro {
                 using (var client = fClient.Result)
                 using (var adapter = new Squared.Task.IO.SocketDataAdapter(client.Client, false))
                 using (Monitor) {
-                    Console.WriteLine("Forwarding input events to " + endpoint);
+                    Console.WriteLine("INPUTHOOK: Forwarding input events to " + endpoint);
 
                     client.Client.DontFragment = true;
                     client.Client.NoDelay = true;
@@ -75,6 +86,8 @@ namespace Tsunagaro {
                     }
                 }
             } finally {
+                Console.WriteLine("INPUTHOOK: Exiting");
+                Environment.Exit(1);
             }
         }
     }
