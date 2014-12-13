@@ -58,6 +58,7 @@
     <Compile Include="ClipboardMonitorJobQueue.cs" />
     <Compile Include="InputEvent.cs" />
     <Compile Include="InputMonitorService.cs" />
+    <Compile Include="InputPlaybackService.cs" />
     <Compile Include="PeerService.cs" />
     <Compile Include="ControlService.cs" />
     <Compile Include="ClipboardService.cs" />

@@ -30,17 +30,7 @@ namespace Tsunagaro {
         public IEnumerator<object> Initialize () {
             Scheduler.Start(MainTask(), TaskExecutionPolicy.RunAsBackgroundTask);
 
-            // Program.Peer.MessageHandlers.Add("UserInput", OnUserInput);
-
             // Program.Control.Handlers.Add("/input", ServeInput);
-
-            yield break;
-        }
-
-        private IEnumerator<object> OnUserInput (PeerService.Connection sender, Dictionary<string, object> message) {
-            var events = (JArray)message["Events"];
-
-            Debug.WriteLine("UserInput " + JsonConvert.SerializeObject(message));
 
             yield break;
         }
@@ -57,6 +47,11 @@ namespace Tsunagaro {
 
                 int MessageSize = Marshal.SizeOf(typeof(Win32.InputEvent));
 
+                var outboundPayload = new Dictionary<string, object> {
+                    {"Events", null},
+                    {"State",  null}
+                };
+
                 using (client)
                 using (var adapter = new SocketDataAdapter(client.Client, false))
                 while (true) {
@@ -68,7 +63,10 @@ namespace Tsunagaro {
                     if (fBytesRead.Failed)
                         yield break;
 
-                    Debug.WriteLine(String.Format("Got packet: {0} byte(s), {1} input event(s)", fBytesRead.Result, fBytesRead.Result / MessageSize));
+                    outboundPayload["Events"] = Convert.ToBase64String(buffer, 0, fBytesRead.Result, Base64FormattingOptions.None);
+
+                    // Now we rebroadcast the packet over RPC to our peers
+                    yield return Program.Peer.Broadcast("RemoteInput", outboundPayload);
                 }
             } finally {
                 bool hasExited = true;

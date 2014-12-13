@@ -15,11 +15,12 @@ namespace Tsunagaro {
 
         public static readonly TaskScheduler            Scheduler    = new TaskScheduler(JobQueue.ThreadSafe);
 
-        public static readonly ControlService           Control      = new ControlService(Scheduler);
-        public static readonly DiscoveryService         Discovery    = new DiscoveryService(Scheduler);
-        public static readonly ClipboardService         Clipboard    = new ClipboardService(Scheduler);
-        public static readonly PeerService              Peer         = new PeerService(Scheduler);
-        public static readonly InputMonitorService      InputMonitor = new InputMonitorService(Scheduler);
+        public static readonly ControlService           Control       = new ControlService(Scheduler);
+        public static readonly DiscoveryService         Discovery     = new DiscoveryService(Scheduler);
+        public static readonly ClipboardService         Clipboard     = new ClipboardService(Scheduler);
+        public static readonly PeerService              Peer          = new PeerService(Scheduler);
+        public static readonly InputMonitorService      InputMonitor  = new InputMonitorService(Scheduler);
+        public static readonly InputPlaybackService     InputPlayback = new InputPlaybackService(Scheduler);
 
         public static readonly MemoryStream StdOut          = new MemoryStream();
         public static readonly Thread       SchedulerThread = new Thread(SchedulerThreadMain) {
@@ -105,12 +106,16 @@ namespace Tsunagaro {
         }
 
         public static IEnumerator<object> StartupTask (Action ready) {
+            bool BroadcastingInput = System.Net.Dns.GetHostName().ToLowerInvariant().Trim() != "eir";
+
             var tasks = new[] {
                 Control.Initialize(),
                 Discovery.Initialize(),
                 Clipboard.Initialize(),
                 Peer.Initialize(),
-                InputMonitor.Initialize()
+                BroadcastingInput 
+                    ? InputMonitor.Initialize()
+                    : InputPlayback.Initialize()
             };
 
             yield return Future.WaitForAll(
