@@ -12,40 +12,109 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using ICSharpCode.SharpZipLib.GZip;
 using System.Diagnostics;
+using Newtonsoft.Json;
+using System.Net.Sockets;
+using System.Net;
+using System.Runtime.InteropServices;
 
 namespace Tsunagaro {
     public class InputMonitorService {
+        public const double ChildRestartTimeoutSeconds = 60;
+
         public readonly TaskScheduler Scheduler;
-        public readonly Win32.InputEventMonitor Monitor;
 
         public InputMonitorService (TaskScheduler scheduler) {
             Scheduler = scheduler;
-
-            Monitor = new Win32.InputEventMonitor();
         }
 
         public IEnumerator<object> Initialize () {
-            Scheduler.Start(MonitorTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+            Scheduler.Start(MainTask(), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            // Program.Peer.MessageHandlers.Add("UserInput", OnUserInput);
 
             // Program.Control.Handlers.Add("/input", ServeInput);
-
-            Monitor.Start();
 
             yield break;
         }
 
-        public IEnumerator<object> MonitorTask () {
-            while (true) {
-                Win32.InputEvent evt;
-                while (Monitor.TryRead(out evt)) {
-                    if (evt.Type == Win32.InputEventType.Keyboard) {
-                        Debug.WriteLine(String.Format("Keyboard {0} {1}", evt.Message, evt.Keyboard));
-                    } else if (evt.Type == Win32.InputEventType.Mouse) {
-                        Debug.WriteLine(String.Format("Mouse    {0} {1}", evt.Message, evt.Mouse));
-                    }
+        private IEnumerator<object> OnUserInput (PeerService.Connection sender, Dictionary<string, object> message) {
+            var events = (JArray)message["Events"];
+
+            Debug.WriteLine("UserInput " + JsonConvert.SerializeObject(message));
+
+            yield break;
+        }
+
+        private IEnumerator<object> ChildHandler (Process proc, Future<TcpClient> fClient) {
+            try {
+                Console.WriteLine("Started input hook w/pid {0}; waiting for return connection", proc.Id);
+
+                yield return fClient;
+                var client = fClient.Result;
+
+                const int PacketSize = 512;
+                var buffer = new byte[PacketSize];
+
+                int MessageSize = Marshal.SizeOf(typeof(Win32.InputEvent));
+
+                using (client)
+                using (var adapter = new SocketDataAdapter(client.Client, false))
+                while (true) {
+                    // Read a single packet of up to PacketSize bytes.
+                    // InputHook sets DontFragment so we are going to get a complete set of messages.
+                    var fBytesRead = adapter.Read(buffer, 0, PacketSize);
+                    yield return fBytesRead;
+
+                    if (fBytesRead.Failed)
+                        yield break;
+
+                    Debug.WriteLine(String.Format("Got packet: {0} byte(s), {1} input event(s)", fBytesRead.Result, fBytesRead.Result / MessageSize));
+                }
+            } finally {
+                bool hasExited = true;
+                try {
+                    hasExited = proc.HasExited;
+                } catch {
+                }
+                
+                if (!hasExited) {
+                    Console.WriteLine("Terminating input hook");
+                    proc.Kill();
+                } else {
+                    Console.WriteLine("Input hook process exited");
                 }
 
-                yield return Monitor.DataReady.Wait();
+                proc.Dispose();
+            }
+        }
+
+        public IEnumerator<object> MainTask () {
+            var listener = new TcpListener(0);
+            listener.Start();
+
+            var port = ((IPEndPoint)listener.Server.LocalEndPoint).Port;
+
+            var psi = new ProcessStartInfo("InputHook.exe", port.ToString());
+
+            while (true) {
+                var fProc = Future.RunInThread(() => Process.Start(psi));
+
+                yield return fProc;
+
+                var fClient = listener.AcceptIncomingConnection();
+                using (var fChildHandler = Scheduler.Start(ChildHandler(fProc.Result, fClient))) {
+                    // If the process is terminated prematurely, kill the child handler
+                    var fTerminated = Future.RunInThread(fProc.Result.WaitForExit);
+                    fTerminated.RegisterOnComplete(
+                        (_) => fChildHandler.Dispose()
+                    );
+
+                    // Run the child handler until it completes
+                    yield return fChildHandler;
+                }                
+
+                // The child died for some reason, let's wait a moment before restarting it...
+                yield return new Sleep(ChildRestartTimeoutSeconds);
             }
         }
     }
