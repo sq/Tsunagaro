@@ -185,25 +185,32 @@ namespace Tsunagaro {
             var html = String.Format(
                 @"<html>
     <head>
-        <title>Clipboard</title>
+        <title>Clipboard on {0}</title>
         <meta charset=""UTF-8"">
         <meta http-equiv=""refresh"" content=""10"">
     </head>
     <body>
         <h2>Status</h2>
-        {0}
+        {1}
         <h2>Formats</h2>
         <pre>
-{1}
+{2}
         </pre>
     </body>
 </html>",
+                System.Net.Dns.GetHostName(),
                 (fSentinelData.Result != null)
                     ? "Remote data from " + (string)fSentinelData.Result
                     : "Local data",
                 String.Join(
                     "<br>",
-                    fFormats.Result
+                    (
+                        from fmt in fFormats.Result 
+                        select String.Format(
+                            "{0} <a href=\"/clipboard/data?format={1}\">View</a>",
+                            fmt, HttpUtility.UrlEncode(fmt)
+                        )
+                    )
                 )
             );
             

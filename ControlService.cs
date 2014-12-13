@@ -369,7 +369,7 @@ namespace Tsunagaro {
             var html = String.Format(
                 @"<html>
     <head>
-        <title>Status</title>
+        <title>Tsunagaro on {0}</title>
         <meta charset=""UTF-8"">
         <meta http-equiv=""refresh"" content=""10"">
     </head>
@@ -377,22 +377,26 @@ namespace Tsunagaro {
         <h2>Peers</h2>
         <table>
             <tr><th>Name</th><th>Address</th></tr>
-{1}
+{2}
         </table>
+        <h2>Control</h2>
+        <a href=""/kill-network"">Kill Network</a>
         <h2>Log</h2>
         <pre>
-{0}
+{1}
         </pre>
     </body>
 </html>",
+                Dns.GetHostName(),
                 HttpUtility.HtmlEncode(logText),
                 String.Join(
                     Environment.NewLine,
                     from p in Program.Peer.Peers.Values
                     select String.Format(
-                        "<tr><td>{0}</td><td>{1}</td></tr>",
+                        "<tr><td>{0}</td><td>{1}</td><td><a href=\"{2}\">Status Page</a> <a href=\"{2}clipboard\">Clipboard</a></tr>",
                         p.HostName,
-                        p.RemoteEndPoint
+                        p.RemoteEndPoint,
+                        "http://" + p.RemoteEndPoint + "/"
                     )
                 )
             );
