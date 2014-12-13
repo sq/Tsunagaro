@@ -107,19 +107,24 @@ namespace Tsunagaro {
 
         public static IEnumerator<object> StartupTask (Action ready) {
             bool BroadcastingInput = System.Net.Dns.GetHostName().ToLowerInvariant().Trim() != "eir";
+            bool SyncingInput = false;
 
             var tasks = new[] {
                 Control.Initialize(),
                 Discovery.Initialize(),
                 Clipboard.Initialize(),
                 Peer.Initialize(),
-                BroadcastingInput 
-                    ? InputMonitor.Initialize()
-                    : InputPlayback.Initialize()
+                SyncingInput
+                    ? (
+                        BroadcastingInput 
+                            ? InputMonitor.Initialize()
+                            : InputPlayback.Initialize()
+                    )
+                    : null
             };
 
             yield return Future.WaitForAll(
-                from t in tasks select Scheduler.Start(t)
+                from t in tasks where t != null select Scheduler.Start(t)
             );
 
             ready();

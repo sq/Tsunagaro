@@ -126,8 +126,25 @@ namespace Tsunagaro {
 
         public IEnumerator<object> Initialize () {
             Program.Control.Handlers.Add("/connect", ServeConnect);
+            Program.Control.Handlers.Add("/kill-network", ServeKillNetwork);
+
+            Program.Peer.MessageHandlers.Add("Kill", OnKill);
 
             yield break;
+        }
+
+        public IEnumerator<object> ServeKillNetwork (HttpServer.Request request) {
+            yield return ControlService.WriteResponseBody(request, "Bye-bye");
+
+            Scheduler.Start(OnKill(null, null), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            yield return Program.Peer.Broadcast("Kill");
+        }
+
+        private IEnumerator<object> OnKill (PeerService.Connection sender, Dictionary<string, object> message) {
+            yield return new Sleep(2);
+
+            Application.Exit();
         }
 
         public IEnumerator<object> ServeConnect (HttpServer.Request request) {
