@@ -68,6 +68,8 @@ namespace Tsunagaro.Win32 {
 
         private IntPtr HookKeyboard, HookMouse;
 
+        public bool BlockKeyboard, BlockMouse;
+
         public InputEventMonitor () {
             Thread = new Thread(ThreadProc) {
                 Priority = ThreadPriority.Highest,
@@ -88,6 +90,9 @@ namespace Tsunagaro.Win32 {
         }
 
         unsafe uint KeyboardProc (int nCode, IntPtr wParam, IntPtr lParam) {
+            if (nCode < 0)
+                return CallNextHookEx(HookKeyboard, nCode, wParam, lParam);
+
             var pData = (KBDLLHOOKSTRUCT *)lParam;
 
             var evt = new InputEvent {
@@ -105,10 +110,16 @@ namespace Tsunagaro.Win32 {
 
             DataReady.Set();
 
+            if (BlockKeyboard)
+                return 1;
+
             return CallNextHookEx(HookKeyboard, nCode, wParam, lParam);
         }
 
         unsafe uint MouseProc (int nCode, IntPtr wParam, IntPtr lParam) {
+            if (nCode < 0)
+                return CallNextHookEx(HookMouse, nCode, wParam, lParam);
+
             var pData = (MSLLHOOKSTRUCT*)lParam;
 
             var evt = new InputEvent {
@@ -126,6 +137,9 @@ namespace Tsunagaro.Win32 {
                 Buffer.Add(evt);
 
             DataReady.Set();
+
+            if (BlockMouse)
+                return 1;
 
             return CallNextHookEx(HookMouse, nCode, wParam, lParam);
         }
