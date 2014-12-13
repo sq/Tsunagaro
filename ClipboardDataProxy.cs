@@ -158,7 +158,7 @@ namespace Tsunagaro {
             throw new NotImplementedException();
         }
     }
-
+    
     class LongTimeoutWebClient : WebClient {
         protected override WebRequest GetWebRequest (Uri address) {
             var result = base.GetWebRequest(address);

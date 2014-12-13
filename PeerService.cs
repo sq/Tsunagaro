@@ -260,7 +260,7 @@ namespace Tsunagaro {
 
         private IEnumerator<object> HandleConnection (Connection conn) {
             if (Peers.ContainsKey(conn.RemoteEndPoint))
-                throw new InvalidOperationException(String.Format("Got duplicate connections for {0}", conn.RemoteEndPoint));
+                throw new InvalidOperationException(String.Format("Got duplicate connection for {0}", conn.RemoteEndPoint));
 
             Peers.Add(conn.RemoteEndPoint, conn);
             try {
@@ -282,10 +282,10 @@ namespace Tsunagaro {
 
         public IEnumerator<object> TryConnectTo (IPEndPoint endpoint) {
             if (Peers.ContainsKey(endpoint)) {
-                Console.WriteLine("Already connected to {0}", endpoint);
+                // Console.WriteLine("Already connected to {0}", endpoint);
                 yield break;
             } else if (Pending.Contains(endpoint)) {
-                Console.WriteLine("Already connecting to {0}", endpoint);
+                // Console.WriteLine("Already connecting to {0}", endpoint);
                 yield break;
             }
 

@@ -13,12 +13,13 @@ namespace Tsunagaro {
         public static readonly ClipboardMonitorJobQueue MainThreadJobQueue  = new ClipboardMonitorJobQueue();
         public static readonly TaskScheduler            MainThreadScheduler = new TaskScheduler(() => MainThreadJobQueue);
 
-        public static readonly TaskScheduler            Scheduler = new TaskScheduler(JobQueue.ThreadSafe);
+        public static readonly TaskScheduler            Scheduler    = new TaskScheduler(JobQueue.ThreadSafe);
 
-        public static readonly ControlService           Control   = new ControlService(Scheduler);
-        public static readonly DiscoveryService         Discovery = new DiscoveryService(Scheduler);
-        public static readonly ClipboardService         Clipboard = new ClipboardService(Scheduler);
-        public static readonly PeerService              Peer      = new PeerService(Scheduler);
+        public static readonly ControlService           Control      = new ControlService(Scheduler);
+        public static readonly DiscoveryService         Discovery    = new DiscoveryService(Scheduler);
+        public static readonly ClipboardService         Clipboard    = new ClipboardService(Scheduler);
+        public static readonly PeerService              Peer         = new PeerService(Scheduler);
+        public static readonly InputMonitorService      InputMonitor = new InputMonitorService(Scheduler);
 
         public static readonly MemoryStream StdOut          = new MemoryStream();
         public static readonly Thread       SchedulerThread = new Thread(SchedulerThreadMain) {
@@ -108,7 +109,8 @@ namespace Tsunagaro {
                 Control.Initialize(),
                 Discovery.Initialize(),
                 Clipboard.Initialize(),
-                Peer.Initialize()
+                Peer.Initialize(),
+                InputMonitor.Initialize()
             };
 
             yield return Future.WaitForAll(

@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -30,6 +31,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.SharpZipLib">
@@ -51,6 +53,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="ClipboardMonitorJobQueue.cs" />
+    <Compile Include="InputMonitorService.cs" />
     <Compile Include="PeerService.cs" />
     <Compile Include="ControlService.cs" />
     <Compile Include="ClipboardService.cs" />
@@ -62,6 +65,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Win32InputEventMonitor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
