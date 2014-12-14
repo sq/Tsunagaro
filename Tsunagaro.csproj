@@ -76,10 +76,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="Upstream\DataMangler\DataMangler.csproj">
-      <Project>{dc905b32-07fa-4161-9627-c8af6e6241ee}</Project>
-      <Name>DataMangler</Name>
-    </ProjectReference>
     <ProjectReference Include="Upstream\Fracture\Squared\TaskLib\Squared.Task.ClientProfile.csproj">
       <Project>{173abdca-7278-46ff-a300-d3bf8ccef181}</Project>
       <Name>Squared.Task.ClientProfile</Name>

@@ -16,6 +16,12 @@ using System.Linq;
 
 namespace Tsunagaro {
     public class ControlService {
+#if DEBUG
+        public const bool Tracing = true;
+#else
+        public const bool Tracing = false;
+#endif
+
         bool IsInitialized = false;
 
         const int PortBase = 9888;
@@ -32,6 +38,9 @@ namespace Tsunagaro {
         public ControlService (TaskScheduler scheduler) {
             Scheduler = scheduler;
             HttpServer = new HttpServer(Scheduler);
+
+            if (Tracing)
+                HttpServer.Trace = Console.WriteLine;
 
             Handlers =
                 new Dictionary<string, Func<HttpServer.Request, IEnumerator<object>>> {
@@ -146,14 +155,22 @@ namespace Tsunagaro {
 
                 var finishedWhen = DateTime.UtcNow;
 
-                Console.WriteLine(
-                    "  {0}  \n" +
-                    "{1}  DELAY {2:0000.0}ms  HANDLE {3:00000.0}ms",
-                    request.Line.UnparsedUri,
-                    request.TimingText ?? "",
-                    (beganWhen - request.QueuedWhenUTC).TotalMilliseconds,
-                    (finishedWhen - beganWhen).TotalMilliseconds
-                );
+                if (Tracing) {
+                    Console.WriteLine(
+                        "> {0} \n" +
+                        "LINE {1:00000.0}ms  " +
+                        "HEADERS {2:0000.0}ms  " +
+                        "QUEUE {3:0000.0}ms  " +
+                        "DELAY {4:0000.0}ms  " +
+                        "HANDLE {5:00000.0}ms",
+                        request.Line.UnparsedUri,
+                        request.Timing.Line.TotalMilliseconds,
+                        request.Timing.Headers.TotalMilliseconds,
+                        request.Timing.Queue.TotalMilliseconds,
+                        (beganWhen - request.QueuedWhenUTC).TotalMilliseconds,
+                        (finishedWhen - beganWhen).TotalMilliseconds
+                    );
+                }
 
                 if (fTask.Failed) {
                     Console.WriteLine("Error in handler for '{0}': {1}", path, fTask.Error);

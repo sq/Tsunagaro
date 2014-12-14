@@ -1,6 +1,3 @@
-[submodule "Upstream/DataMangler"]
-	path = Upstream/DataMangler
-	url = https://github.com/sq/DataMangler.git
 [submodule "Upstream/Fracture"]
 	path = Upstream/Fracture
 	url = https://github.com/sq/Fracture.git
