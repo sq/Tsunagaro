@@ -190,7 +190,7 @@ namespace Tsunagaro {
         <meta http-equiv=""refresh"" content=""10"">
     </head>
     <body>
-        <h2>Status</h2>
+        <h2>Clipboard on {0}</h2>
         {1}
         <h2>Formats</h2>
         <pre>

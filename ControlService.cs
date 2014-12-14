@@ -118,6 +118,8 @@ namespace Tsunagaro {
         }
 
         IEnumerator<object> RequestTask (HttpServer.Request request) {
+            var beganWhen = DateTime.UtcNow;
+
             using (request) {
                 IEnumerator<object> task = null;
                 var path = request.Line.Uri.AbsolutePath;
@@ -126,6 +128,9 @@ namespace Tsunagaro {
                 if (Handlers.ContainsKey(normalizedPath)) {
                     var handler = Handlers[normalizedPath];
                     task = handler(request);
+
+                    if (task != null)
+                        request.Response.CacheControl = "no-cache";
                 } else if (path == "/") {
                     path = "/html/index.html";
                 }
@@ -138,6 +143,17 @@ namespace Tsunagaro {
 
                 var fTask = Scheduler.Start(task);
                 yield return fTask;
+
+                var finishedWhen = DateTime.UtcNow;
+
+                Console.WriteLine(
+                    "  {0}  \n" +
+                    "{1}  DELAY {2:0000.0}ms  HANDLE {3:00000.0}ms",
+                    request.Line.UnparsedUri,
+                    request.TimingText ?? "",
+                    (beganWhen - request.QueuedWhenUTC).TotalMilliseconds,
+                    (finishedWhen - beganWhen).TotalMilliseconds
+                );
 
                 if (fTask.Failed) {
                     Console.WriteLine("Error in handler for '{0}': {1}", path, fTask.Error);
@@ -374,7 +390,7 @@ namespace Tsunagaro {
         <meta http-equiv=""refresh"" content=""10"">
     </head>
     <body>
-        <h2>Peers</h2>
+        <h2>{0}: Peers</h2>
         <table>
             <tr><th>Name</th><th>Address</th></tr>
 {2}

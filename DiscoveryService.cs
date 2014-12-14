@@ -97,7 +97,17 @@ namespace Tsunagaro {
                 if (!Program.Peer.Peers.ContainsKey(endpoint))
                     Console.WriteLine("Got announcement from unknown peer {0}", endpoint);
 
-                yield return Program.Peer.TryConnectTo(endpoint);
+                var fTryConnect = Scheduler.Start(Program.Peer.TryConnectTo(endpoint));
+                yield return fTryConnect;
+
+                if ((fTryConnect.Failed) || Object.Equals(fTryConnect.Result, false)) {
+                    const float retryDelay = 10;
+                    Console.WriteLine("Connection attempt failed. Waiting {0} second(s) and retrying.", retryDelay);
+
+                    yield return new Sleep(retryDelay);
+
+                    yield return Program.Peer.TryConnectTo(endpoint);
+                }
             }
         }
     }

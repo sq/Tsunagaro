@@ -176,17 +176,20 @@ namespace Tsunagaro {
                 Peers.ContainsKey(fRemoteEndPoint.Result)
             ) {
                 yield return ControlService.ServeError(request, 501, "already connecting or connected");
+                // FIXME: If a dead peer reconnects, this rejects the attempt
                 Console.WriteLine("Rejected duplicate connection attempt from {0}", request.RemoteEndPoint);
                 yield break;
             }
 
-            var pc = new PendingConnection(fRemoteEndPoint.Result);
             Console.WriteLine("Establishing connection with {0}", fRemoteEndPoint.Result);
-            Scheduler.Start(AwaitConnection(pc), TaskExecutionPolicy.RunAsBackgroundTask);
-
             request.Response.ContentType = "text/plain";
 
-            var address = String.Format("{0}:{1}", Program.Control.HostName, pc.Port);
+            var fPc = Future.RunInThread(() => new PendingConnection(fRemoteEndPoint.Result));
+            yield return fPc;
+
+            Scheduler.Start(AwaitConnection(fPc.Result), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            var address = String.Format("{0}:{1}", Program.Control.HostName, fPc.Result.Port);
             yield return ControlService.WriteResponseBody(request, address);
         }
 
@@ -300,9 +303,11 @@ namespace Tsunagaro {
         public IEnumerator<object> TryConnectTo (IPEndPoint endpoint) {
             if (Peers.ContainsKey(endpoint)) {
                 // Console.WriteLine("Already connected to {0}", endpoint);
+                yield return new Result(true);
                 yield break;
             } else if (Pending.Contains(endpoint)) {
                 // Console.WriteLine("Already connecting to {0}", endpoint);
+                yield return new Result(true);
                 yield break;
             }
 
@@ -322,6 +327,7 @@ namespace Tsunagaro {
 
                 if (fResponse.Failed) {
                     Console.WriteLine("Connection to {0} failed: {1}", endpoint, fResponse.Error);
+                    yield return new Result(false);
                     yield break;
                 }
 
@@ -336,6 +342,7 @@ namespace Tsunagaro {
 
                 if (fClient.Failed) {
                     Console.WriteLine("Connection to {0} failed: {1}", endpoint, fClient.Error);
+                    yield return new Result(false);
                     yield break;
                 }
 
@@ -343,6 +350,8 @@ namespace Tsunagaro {
 
                 var conn = new Connection(fClient.Result, endpoint);
                 Scheduler.Start(HandleConnection(conn), TaskExecutionPolicy.RunAsBackgroundTask);
+
+                yield return new Result(true);
             } finally {
                 Pending.Remove(endpoint);
             }
