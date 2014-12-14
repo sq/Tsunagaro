@@ -16,8 +16,10 @@ namespace Tsunagaro {
         public static readonly int                     MessageSize = Marshal.SizeOf(typeof(Win32.InputEvent));
 
         public static void Main (string[] args) {
-            if (args.Length != 1)
-                return;
+            if (args.Length != 1) {
+                Console.WriteLine("usage: InputHook port");
+                Environment.Exit(1);
+            }
 
             int port = int.Parse(args[0]);
 

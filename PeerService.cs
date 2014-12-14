@@ -11,6 +11,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Net;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace Tsunagaro {
     public delegate IEnumerator<object> MessageHandler (PeerService.Connection sender, Dictionary<string, object> message);
@@ -127,22 +128,46 @@ namespace Tsunagaro {
         public IEnumerator<object> Initialize () {
             Program.Control.Handlers.Add("/connect", ServeConnect);
             Program.Control.Handlers.Add("/kill-network", ServeKillNetwork);
+            Program.Control.Handlers.Add("/restart-network", ServeRestartNetwork);
 
             Program.Peer.MessageHandlers.Add("Kill", OnKill);
+            Program.Peer.MessageHandlers.Add("Restart", OnRestart);
 
             yield break;
         }
 
         public IEnumerator<object> ServeKillNetwork (HttpServer.Request request) {
-            yield return ControlService.WriteResponseBody(request, "Bye-bye");
+            yield return ControlService.WriteResponseBody(request, "Bye-bye!");
 
             Scheduler.Start(OnKill(null, null), TaskExecutionPolicy.RunAsBackgroundTask);
 
             yield return Program.Peer.Broadcast("Kill");
         }
 
+        public IEnumerator<object> ServeRestartNetwork (HttpServer.Request request) {
+            yield return ControlService.WriteResponseBody(request, "Restarting...");
+
+            Scheduler.Start(OnRestart(null, null), TaskExecutionPolicy.RunAsBackgroundTask);
+
+            yield return Program.Peer.Broadcast("Restart");
+        }
+
         private IEnumerator<object> OnKill (PeerService.Connection sender, Dictionary<string, object> message) {
             yield return new Sleep(2);
+
+            Application.Exit();
+        }
+
+        private IEnumerator<object> OnRestart (PeerService.Connection sender, Dictionary<string, object> message) {
+            yield return new Sleep(1);
+
+            var psi = new ProcessStartInfo("Restart", "15 Tsunagaro") {
+                UseShellExecute = false
+            };
+
+            Process.Start(psi);
+
+            yield return new Sleep(1);
 
             Application.Exit();
         }

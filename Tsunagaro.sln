@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Squared.Task.ClientProfile"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tsunagaro.InputHook", "InputHook\Tsunagaro.InputHook.csproj", "{A30E53EE-CEDF-46C7-9159-21A51E1B3C37}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tsunagaro.Restart", "Restart\Tsunagaro.Restart.csproj", "{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +76,15 @@ Global
 		{A30E53EE-CEDF-46C7-9159-21A51E1B3C37}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A30E53EE-CEDF-46C7-9159-21A51E1B3C37}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A30E53EE-CEDF-46C7-9159-21A51E1B3C37}.Release|x86.ActiveCfg = Release|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Mono|Any CPU.ActiveCfg = Release|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Mono|Any CPU.Build.0 = Release|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Mono|x86.ActiveCfg = Release|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67F8CE66-967D-4F9B-AA66-7C2DDD895DCD}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

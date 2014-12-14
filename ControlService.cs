@@ -396,7 +396,7 @@ namespace Tsunagaro {
 {2}
         </table>
         <h2>Control</h2>
-        <a href=""/kill-network"">Kill Network</a>
+        <a href=""/kill-network"">Kill Network</a> <a href=""/restart-network"">Restart Network</a>
         <h2>Log</h2>
         <pre>
 {1}
