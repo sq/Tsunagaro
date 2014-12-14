@@ -1,1 +1,5 @@
 *.log
+Debug-x64
+Debug-Win32
+Release-x64
+Release-Win32

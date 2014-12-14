@@ -17,49 +17,13 @@ hidkmdf.sys = 99
 CopyFunctionDriver = 12      
 
 [Manufacturer]
-%VENDOR%=Vendor, NT$ARCH$, NT$ARCH$.6.1
+%VENDOR%=Vendor, NT$ARCH$
 
-; For XP and later
 [Vendor.NT$ARCH$]
-%vmulti%    = vmulti.Inst, djpnewton\vmulti
-
-; For Win7 and later so that we can use inbox HID-KMDF mapper
-[Vendor.NT$ARCH$.6.1]
 %vmulti%    = vmulti.Inst.Win7, djpnewton\vmulti
 
 ;===============================================================
-;   vmulti for XP thru Vista
-;===============================================================
-[vmulti.Inst.NT]
-CopyFiles = CopyFunctionDriver
-
-[vmulti.Inst.NT.HW]
-AddReg = vmulti_Parameters.AddReg 
-
-;
-; vmulti is the function driver and hidkmdf is the WDM HID minidriver
-;
-[vmulti.Inst.NT.Services]
-AddService = hidkmdf,,hidkmdf_Service_Inst,
-AddService = vmulti,0x00000002, vmulti_Service_Inst
-
-[CopyFunctionDriver]
-hidkmdf.sys
-
-[vmulti_Parameters.AddReg]
-HKR,,"UpperFilters",0x00010000,"hidkmdf"
-
-[hidkmdf_Service_Inst]
-DisplayName    = %hidkmdf.SVCDESC%
-ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
-StartType      = 3               ; SERVICE_DEMAND_START 
-ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %12%\hidkmdf.sys
-LoadOrderGroup = PNP Filter
-
-
-;===============================================================
-;   vmulti for Win7
+;   vmulti for Win7+
 ;   Instead of using hidkmdf.sys as a filter, use the inbox 
 ;   mshidkmdf.sys as a mapper filter
 ;===============================================================

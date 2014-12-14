@@ -6,7 +6,7 @@
 #ifdef VMULTI_BUILDING
 #define VMULTI_EXPORT __declspec(dllexport)
 #else
-#define VMULTI_EXPORT __declspec(dllimport)
+#define VMULTI_EXPORT
 #endif
 
 typedef struct _vmulti_client_t* pvmulti_client;
